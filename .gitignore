@@ -1,20 +1,21 @@
-# Virtual environment
+# Virtual environments
 venv/
 env/
 .venv/
 
-# Python caches
-__pycache__/
-*.pyc
-*.pyo
-
-# Jupyter junk
+# Jupyter
 .ipynb_checkpoints/
+*.ipynb_checkpoints
 
-# Large files you don't want to commit yet
+# ML generated / large files
 *.pkl
 *.joblib
-*.csv     
-models/
-data/raw/
-data/processed/
+*.pickle
+models/*
+data/raw/*
+data/processed/*
+data/interim/*
+
+# OS junk
+.DS_Store
+Thumbs.db
