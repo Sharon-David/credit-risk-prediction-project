@@ -122,10 +122,10 @@ def predict(inputs: dict):
         prob = model.predict_proba(df_processed)[0][1]
 
         # Risk tiers
-        if prob >= 0.50:
+        if prob >= 0.25:
             decision = "Reject (High Risk)"
             tier = "high"
-        elif prob >= 0.35:
+        elif prob >= 0.15:
             decision = "Review (Medium Risk)"
             tier = "medium"
         else:
