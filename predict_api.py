@@ -1,17 +1,23 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
-import subprocess, json, sys
+from predict_single import predict as run_prediction
 
 app = FastAPI()
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:8000", "http://127.0.0.1:8000"],
+    allow_credentials=True,
+    allow_methods=["GET"],
+    allow_headers=["*"],
+)
 
 @app.get("/")
 def serve_html():
     return FileResponse("credit-risk-demo.html")
 
 @app.get("/predict")
-def predict(
+def predict_endpoint(
     credit: float, income: float, days_employed: float,
     age_years: float = 35.0, ext2: float = 0.5, ext3: float = 0.5,
     annuity: float = 25000.0, goods: float = 450000.0,
@@ -46,15 +52,6 @@ def predict(
             "DEF_30_CNT_SOCIAL_CIRCLE": def_30,
             "DEF_60_CNT_SOCIAL_CIRCLE": def_60,
         }
-        result = subprocess.run(
-            [sys.executable, "-W", "ignore", "predict_single.py", json.dumps(inputs)],
-            capture_output=True, text=True, timeout=30
-        )
-        stdout = result.stdout.strip()
-        if not stdout:
-            return {"error": result.stderr.strip()[:400]}
-        return json.loads(stdout)
-    except subprocess.TimeoutExpired:
-        return {"error": "Prediction timed out"}
+        return run_prediction(inputs)
     except Exception as e:
         return {"error": str(e)}

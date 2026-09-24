@@ -2,6 +2,7 @@
 import joblib
 import pandas as pd
 import numpy as np
+import os
 import sys
 import json
 import warnings
@@ -9,6 +10,15 @@ warnings.filterwarnings("ignore")
 
 model        = joblib.load("models/stacked/stacked_model.pkl")
 preprocessor = joblib.load("models/preprocessor.pkl")
+
+# Cost-optimized threshold from notebooks/05_threshold_optimization.ipynb.
+# Falls back to 0.5 if the file is missing (e.g. pipeline not yet run).
+_THRESHOLD_PATH = os.path.join(os.path.dirname(__file__), "notebooks", "optimal_threshold.txt")
+try:
+    with open(_THRESHOLD_PATH) as _f:
+        OPTIMAL_THRESHOLD = float(_f.read().strip())
+except (FileNotFoundError, ValueError):
+    OPTIMAL_THRESHOLD = 0.5
 
 # Exact columns the preprocessor was fitted on (from notebook 02)
 EXACT_COLUMNS = [
@@ -121,11 +131,11 @@ def predict(inputs: dict):
         df_processed = preprocessor.transform(df)
         prob = model.predict_proba(df_processed)[0][1]
 
-        # Risk tiers
-        if prob >= 0.25:
+        # Risk tiers, anchored on the cost-optimized threshold from notebook 05
+        if prob >= OPTIMAL_THRESHOLD:
             decision = "Reject (High Risk)"
             tier = "high"
-        elif prob >= 0.15:
+        elif prob >= OPTIMAL_THRESHOLD * 0.5:
             decision = "Review (Medium Risk)"
             tier = "medium"
         else:

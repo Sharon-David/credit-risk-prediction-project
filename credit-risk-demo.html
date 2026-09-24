@@ -337,7 +337,7 @@ input[type=range]{
       </div>
     </div>
 
-    <div class="grid-3" style="margin-top:1.2rem;">
+    <div class="grid-3" style="margin-top:1.2rem;grid-template-columns:1fr 1fr 1fr 1fr;">
       <div class="field">
         <label>Years Employed</label>
         <input type="number" id="years_employed" value="3" min="0" max="50"/>
@@ -347,8 +347,12 @@ input[type=range]{
         <input type="number" id="bureau_year" value="1" min="0" max="50"/>
       </div>
       <div class="field">
-        <label>Defaults in Social Circle</label>
+        <label>Defaults in Social Circle (30d)</label>
         <input type="number" id="def_30" value="0" min="0" max="20"/>
+      </div>
+      <div class="field">
+        <label>Defaults in Social Circle (60d)</label>
+        <input type="number" id="def_60" value="0" min="0" max="20"/>
       </div>
     </div>
   </div>
@@ -394,7 +398,7 @@ input[type=range]{
 
     <div style="font-family:'DM Mono',monospace;font-size:0.65rem;color:#aaa;line-height:1.8;border-top:1px solid var(--border);padding-top:1rem;">
       Model: Stacked Ensemble (LR + RF + XGB + LGBM)<br/>
-      Threshold: 0.40 high · 0.25 medium<br/>
+      Threshold: cost-optimized (see notebooks/optimal_threshold.txt)<br/>
       Dataset: Home Credit Default Risk
     </div>
   </div>
@@ -424,6 +428,7 @@ async function runPrediction(){
   const yrs_emp      = +document.getElementById('years_employed').value;
   const bureau_year  = +document.getElementById('bureau_year').value;
   const def_30       = +document.getElementById('def_30').value;
+  const def_60       = +document.getElementById('def_60').value;
   const children     = +document.getElementById('children').value;
   const fam_members  = +document.getElementById('fam_members').value;
   const own_car      = +document.getElementById('own_car').value;
@@ -435,7 +440,7 @@ async function runPrediction(){
   const occupation   = encodeURIComponent(document.getElementById('occupation').value);
   const organization = encodeURIComponent(document.getElementById('organization').value);
 
-  const url = `http://localhost:8000/predict?credit=${credit}&income=${income}&days_employed=${yrs_emp*365}&age_years=${age}&ext2=${ext2}&ext3=${ext3}&annuity=${annuity}&goods=${goods}&children=${children}&fam_members=${fam_members}&own_car=${own_car}&own_realty=${own_realty}&gender=${gender}&contract_type=${contract}&income_type=${income_type}&education=${education}&occupation=${occupation}&organization=${organization}&bureau_year=${bureau_year}&def_30=${def_30}&def_60=${def_30}`;
+  const url = `http://localhost:8000/predict?credit=${credit}&income=${income}&days_employed=${yrs_emp*365}&age_years=${age}&ext2=${ext2}&ext3=${ext3}&annuity=${annuity}&goods=${goods}&children=${children}&fam_members=${fam_members}&own_car=${own_car}&own_realty=${own_realty}&gender=${gender}&contract_type=${contract}&income_type=${income_type}&education=${education}&occupation=${occupation}&organization=${organization}&bureau_year=${bureau_year}&def_30=${def_30}&def_60=${def_60}`;
 
   try{
     const resp = await fetch(url);
