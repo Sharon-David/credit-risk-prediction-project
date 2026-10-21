@@ -1,0 +1,9 @@
+# Pin these to the EXACT versions the model was trained with, or the .pkl files may not load.
+# On the machine that trained the model, run:  pip show scikit-learn xgboost lightgbm
+scikit-learn
+xgboost
+lightgbm
+pandas
+numpy
+joblib
+flask

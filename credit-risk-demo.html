@@ -406,6 +406,8 @@ input[type=range]{
 </div>
 
 <script>
+// Local: http://localhost:8000   AWS: your API Gateway invoke URL, e.g. https://abc123.execute-api.us-east-1.amazonaws.com
+const API_BASE = 'http://localhost:8000';
 function syncSlider(sliderId, valId){
   document.getElementById(valId).textContent = parseFloat(document.getElementById(sliderId).value).toFixed(2);
 }
@@ -440,7 +442,7 @@ async function runPrediction(){
   const occupation   = encodeURIComponent(document.getElementById('occupation').value);
   const organization = encodeURIComponent(document.getElementById('organization').value);
 
-  const url = `http://localhost:8000/predict?credit=${credit}&income=${income}&days_employed=${yrs_emp*365}&age_years=${age}&ext2=${ext2}&ext3=${ext3}&annuity=${annuity}&goods=${goods}&children=${children}&fam_members=${fam_members}&own_car=${own_car}&own_realty=${own_realty}&gender=${gender}&contract_type=${contract}&income_type=${income_type}&education=${education}&occupation=${occupation}&organization=${organization}&bureau_year=${bureau_year}&def_30=${def_30}&def_60=${def_60}`;
+  const url = `${API_BASE}/predict?credit=${credit}&income=${income}&days_employed=${yrs_emp*365}&age_years=${age}&ext2=${ext2}&ext3=${ext3}&annuity=${annuity}&goods=${goods}&children=${children}&fam_members=${fam_members}&own_car=${own_car}&own_realty=${own_realty}&gender=${gender}&contract_type=${contract}&income_type=${income_type}&education=${education}&occupation=${occupation}&organization=${organization}&bureau_year=${bureau_year}&def_30=${def_30}&def_60=${def_60}`;
 
   try{
     const resp = await fetch(url);

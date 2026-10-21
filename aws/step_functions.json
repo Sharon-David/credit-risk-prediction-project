@@ -1,0 +1,15 @@
+{
+  "Comment": "Bare-minimum pipeline (Account A): run the Glue preprocessing job, stop on failure.",
+  "StartAt": "GluePreprocess",
+  "States": {
+    "GluePreprocess": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::glue:startJobRun.sync",
+      "Parameters": { "JobName": "credit-risk-preprocess" },
+      "Catch": [{ "ErrorEquals": ["States.ALL"], "Next": "PipelineFailed" }],
+      "Next": "Done"
+    },
+    "Done": { "Type": "Succeed" },
+    "PipelineFailed": { "Type": "Fail", "Error": "PipelineFailed" }
+  }
+}

@@ -15,6 +15,7 @@ models/*
 data/raw/*
 data/processed/*
 data/interim/*
+model.tar.gz
 
 # OS junk
 .DS_Store
