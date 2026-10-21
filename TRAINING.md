@@ -45,11 +45,41 @@ pip install -r requirements.txt
 - Check: `python -c "import sklearn, xgboost, lightgbm; print('ok')"` → `ok`.
 
 ## Step 4: Download the dataset
-1. Go to https://www.kaggle.com/c/home-credit-default-risk/data (log in or create a free Kaggle account).
-2. If asked, click **"I Understand and Accept"** / **Join Competition** to accept the rules (needed to download).
-3. Download **`application_train.csv`** (~160 MB; it may come as a `.zip`, so extract it).
-   You only need this one file, not the whole competition download.
-4. Put it at exactly: `data/raw/application_train.csv`
+You need the **original** `application_train.csv` from the Kaggle "Home Credit Default Risk" competition
+(~307,511 rows, 122 columns, including `TARGET`). The code expects its exact columns, so a different
+"credit risk" dataset will **not** work.
+
+**Option A: browser (easiest)**
+1. Go to https://www.kaggle.com/competitions/home-credit-default-risk/data and log in (a free account is fine).
+2. Click **Join Competition** / **I Understand and Accept**. The competition ended in 2018, but you still have to
+   accept its rules or the download buttons won't work. (This is usually why people "can't find" the file.)
+3. In the file list on that page, click **`application_train.csv`** and download **just that file** (~160 MB).
+   You don't need the full ~700 MB zip.
+4. If it downloads as `application_train.csv.zip`, extract it.
+5. Put it at exactly: `data/raw/application_train.csv`
+
+**Option B: command line** (you still have to accept the rules on the website first, step 2 above)
+1. Kaggle → click your profile picture → **Settings** → **API** → **Create New Token**. This downloads `kaggle.json`.
+   Put it at `C:\Users\<you>\.kaggle\kaggle.json` (Windows) or `~/.kaggle/kaggle.json` (macOS/Linux).
+2. From the repo root:
+   ```
+   pip install kaggle
+   kaggle competitions download -c home-credit-default-risk -f application_train.csv -p data/raw
+   ```
+3. If it saved `data/raw/application_train.csv.zip`, extract it so you end up with `data/raw/application_train.csv`.
+
+**Files that will NOT work:**
+- `application_test.csv`: it has no `TARGET` column, so it can't be used for training.
+- `bureau.csv`, `previous_application.csv`, `installments_payments.csv`, etc.: separate tables this project doesn't use.
+- Look-alike credit datasets from other sources: different columns.
+- Re-uploads of the competition data on Kaggle Datasets **are fine**, as long as the file is the original
+  `application_train.csv` (~307,511 rows, 122 columns).
+
+**Quick check** (from the repo root, after Step 5's folders exist):
+```
+python -c "import pandas as pd; df = pd.read_csv('data/raw/application_train.csv'); print(df.shape, 'TARGET' in df.columns)"
+```
+Expected: `(307511, 122) True`
 
 ## Step 5: Create the output folders
 These are git-ignored, so they don't exist after cloning. Create them:
