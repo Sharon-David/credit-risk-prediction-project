@@ -154,6 +154,7 @@ Click your account name in the **top-right** of the console. The 12-digit **Acco
 5. Test: `aws sts get-caller-identity` prints your account ID.
 6. Put the model files in the repo folder at exactly:
    `models/stacked/stacked_model.pkl` and `models/preprocessor.pkl`
+   (Don't have them? Follow `TRAINING.md` in the repo root to regenerate them, ~30–60 min.)
 
 ## B3. S3 bucket (for the model file)
 **S3** → **Create bucket** → name `<BUCKET_B>` → defaults → **Create bucket**. Leave it empty; the script fills it.
