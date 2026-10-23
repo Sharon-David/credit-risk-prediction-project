@@ -54,6 +54,27 @@ S3 bucket names must be **globally unique** (across all AWS users), lowercase, n
 Click your account name in the **top-right** of the console. The 12-digit **Account ID** is shown there
 (copy it with the copy icon). This guide calls it **`<ACCOUNT_ID>`**. Only account B needs it.
 
+### 0.6 Costs + budget alert (everyone, do this FIRST)
+These services are **pay-as-you-go**, so they do show up on your bill, but for this demo it's **cents**
+(well under $1 per account if you follow the cleanup at the end). Newer AWS accounts also come with free credits,
+and several of these services have a free tier.
+
+| Account | What can cost money | Rough cost for this demo |
+|---|---|---|
+| A | Glue (~$0.44 per DPU-hour, billed per minute), Athena ($5 per TB scanned; our CSV is 0.00016 TB), S3 storage | a few cents |
+| B | SageMaker serverless (only while answering requests), ECR image storage (~$0.10/GB-month), Lambda / API Gateway / DynamoDB (free tier covers a demo) | cents; **delete the endpoint + image after** |
+| C | S3 + CloudFront (free tier covers a demo) | ~$0 |
+
+**Set a budget alert so you get an email if anything costs money** (2 min, each account owner does it in their own account):
+1. Search bar → **Budgets** (it's under **Billing and Cost Management**) → **Create budget**.
+2. **Budget setup**: **Use a template (simplified)**.
+3. **Templates**: **Zero spend budget** (emails you as soon as spending goes over $0.01).
+   (Prefer fewer emails? Pick **Monthly cost budget** instead and type `5` as the amount, so it emails you near $5.)
+4. **Email recipients**: your email → **Create budget**.
+
+If the alert email arrives, don't panic: check **Billing and Cost Management** → **Bills** to see which service it is.
+A few cents is expected. Just make sure you do the **Cleanup** section at the end of this guide after the demo.
+
 ---
 ---
 
@@ -99,13 +120,14 @@ Click your account name in the **top-right** of the console. The 12-digit **Acco
    - **IAM Role**: `CreditRiskRole`
    - **Python version**: `Python 3.9`
    - **Data processing units**: `1 DPU` (not 1/16; the small one runs out of memory)
-   - **Load common analytics libraries**: **ticked** (gives pandas + scikit-learn)
+   - **Load common analytics libraries**: **ticked** (gives pandas)
 6. **Save** (top right) → **Run**.
-7. **Runs** tab: after ~3–6 min the status should be **Succeeded**.
+7. **Runs** tab: after ~1–3 min the status should be **Succeeded**.
    If **Failed**: click the run → read the **Error message**, or click **Output logs** / **Error logs**.
-8. Check S3: `<BUCKET_A>` now has a `processed/` folder with 4 CSVs.
+8. Check S3: `<BUCKET_A>` now has a `processed/` folder with `application_clean.csv`.
 
-**Demo talking point:** Glue runs the cleaning and the 9 engineered features as a serverless ETL job.
+**Demo talking point:** Glue runs the data cleaning (sentinel fix, ratio features, dropping mostly-empty columns)
+as a serverless ETL job. The model itself was trained offline (see the notebooks) and is hosted in account B.
 
 ## A5. Step Functions (orchestration)
 1. Open **Step Functions** → **Create state machine** (if there's a "Get started" page, choose to create your own).
@@ -326,4 +348,5 @@ requests and errors. That's the CloudWatch metrics for the website.
 - **Account B:** SageMaker → delete the endpoint, endpoint configurations and models; ECR → delete the image;
   IAM → delete user `demo-cli` (it has admin keys!).
 - **Account C:** CloudFront → select the distribution → **Disable** → wait → **Delete**.
-- **Account A:** nothing costs money when idle; delete the S3 bucket if you like.
+- **Account A:** nothing costs money when idle (only the tiny S3 storage); delete the S3 bucket if you like.
+- **Everyone:** a day later, open **Billing and Cost Management** → **Bills** and check the total is ~$0.

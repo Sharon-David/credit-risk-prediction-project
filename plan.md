@@ -44,7 +44,7 @@ Console steps:
 Prefix layout:
 ```
 raw/application_train.csv
-processed/            # X_train, X_test, y_train, y_test (written by Glue)
+processed/            # application_clean.csv (written by Glue)
 models/               # preprocessor.pkl, feature_columns.json, stacked/stacked_model.pkl
 reports/figures/      # optional PNGs
 athena-results/       # Athena query output
@@ -80,11 +80,10 @@ No Parquet conversion, no partitioning. **Bare minimum.**
 
 `aws/glue_preprocess.py` (minimal):
 - `boto3`/`pandas` read `raw/application_train.csv` from S3.
-- 40% stratified sample, replace `365243` → NaN, 9 engineered features, drop `SK_ID_CURR` and
-  columns over 45% missing, 80/20 split, fit `ColumnTransformer`.
-- Write the splits to `processed/` only. **Don't touch `models/`**: the hosted model and preprocessor
+- Replace `365243` → NaN, add 2 ratio features, drop columns over 45% missing (pandas only, no scikit-learn).
+- Write one cleaned CSV to `processed/` only. **Don't touch `models/`**: the hosted model and preprocessor
   are our existing ones and must not be overwritten.
-- Copy straight from `02_preprocessing.ipynb`. No logging, no validation.
+- It's a talking point for the pipeline; the model was trained offline. No logging, no validation.
 
 Console steps:
 1. Upload the script to `s3://<bucket>/scripts/glue_preprocess.py`.
