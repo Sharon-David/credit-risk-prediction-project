@@ -124,9 +124,9 @@ def predict(inputs: dict):
         data['YEARS_EMPLOYED']        = round(-days_emp / 365, 1)
         data['INCOME_PER_PERSON']     = income / fam
 
-        # Only use columns that exist in EXACT_COLUMNS AND in the data
-        available = [c for c in EXACT_COLUMNS if c in data]
-        df = pd.DataFrame([data])[available]
+        # Use exactly the columns (and order) the loaded preprocessor was fitted on,
+        # so a retrained preprocessor with a different column set still works
+        df = pd.DataFrame([data])[list(preprocessor.feature_names_in_)]
 
         df_processed = preprocessor.transform(df)
         prob = model.predict_proba(df_processed)[0][1]

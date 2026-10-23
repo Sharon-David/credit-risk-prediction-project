@@ -1,5 +1,5 @@
 # Build from the REPO ROOT:  docker build --provenance=false -f aws/sagemaker/Dockerfile -t credit-risk .
-# Match the Python version the model was trained with (the __pycache__ suggests 3.13).
+# Library versions (requirements.txt) are what must match the trained model; Python 3.13 is fine.
 FROM python:3.13-slim
 RUN apt-get update && apt-get install -y --no-install-recommends libgomp1 && rm -rf /var/lib/apt/lists/*
 COPY aws/sagemaker/requirements.txt /app/requirements.txt

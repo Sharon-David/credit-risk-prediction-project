@@ -1,5 +1,9 @@
 # Retraining the Model: Step-by-Step (Laptop Only)
 
+> ✅ **Status: DONE.** The model was retrained on a teammate's laptop, and `models/` + `data/` exist there.
+> Trained with scikit-learn 1.9.1 and XGBoost 3.2.0 (already pinned in `aws/sagemaker/requirements.txt`).
+> **You only need this guide if the model files get lost again.** Otherwise go to `aws/README_AWS.md`.
+
 > **Context for whoever (or whichever AI agent) is reading this:**
 > This repo is a credit-risk prediction project (Home Credit Default Risk dataset). The trained model
 > files were lost, and they are needed to deploy the model on AWS (see `aws/README_AWS.md`, Account B).

@@ -1,6 +1,6 @@
 -- Athena exploration (bare minimum). Replace <BUCKET> with your bucket name.
 -- raw/ must contain only application_train.csv.
--- OpenCSVSerde maps columns by position, so only the first 18 columns of the CSV are declared.
+-- OpenCSVSerde maps columns by position, so only the first 19 columns of the CSV are declared.
 
 CREATE DATABASE IF NOT EXISTS credit_risk;
 

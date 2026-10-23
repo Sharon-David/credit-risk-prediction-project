@@ -16,10 +16,14 @@
 | Account | Owner does | Services | Needs on laptop |
 |---|---|---|---|
 | **A: Data pipeline** | Sections A1–A6 | IAM, S3, Athena, Glue, Step Functions, CloudWatch | `application_train.csv` only |
-| **B: Model serving** | Sections B1–B8 | IAM, S3, ECR, SageMaker, DynamoDB, Lambda, API Gateway, CloudWatch | the 2 model `.pkl` files, Docker Desktop, AWS CLI, Python + boto3 |
+| **B: Model serving** | Sections B1–B8 | IAM, S3, ECR, SageMaker, DynamoDB, Lambda, API Gateway, CloudWatch | nothing for the console steps (see below) |
 | **C: Website** | Sections C1–C3 | S3, CloudFront, CloudWatch | `credit-risk-demo.html` only |
 
-**Give account B to the person who has the model files.**
+**About the "Docker laptop" (Account B only):** SageMaker steps B2 + B4b–B4d need **one laptop** with
+Docker Desktop, the AWS CLI, Python, and the model files in `models/`. It does **not** have to be the B
+person's own laptop. Whoever has a capable laptop and the model files (the friend who trained the model)
+can do it using **account B's access keys** (created in B1). The image and endpoint still land in account B.
+Everything else in B (and all of A and C) is just clicking in the browser.
 
 ### 0.2 How the accounts connect (no special permissions between accounts)
 ```
@@ -80,7 +84,8 @@ Click your account name in the **top-right** of the console. The 12-digit **Acco
 4. Run the statements **one at a time**: copy one statement (from its first word to its `;`) into the editor → **Run**.
    - Statement 1 creates the database. Then pick `credit_risk` in the left panel's **Database** dropdown.
    - Statement 2 creates the table.
-   - Statements 3–6 are the exploration queries. Query 2 (class imbalance, ~92% vs ~8%) is the one to show.
+   - Statements 3–6 are the 4 exploration queries (marked `-- 1.` to `-- 4.` in the file). The one to show is
+     `-- 2. Class imbalance`: about 282,686 rows with target `0` vs 24,825 with target `1` (~92% vs ~8%).
 
 **Demo talking point:** we query a 160 MB CSV with plain SQL straight from S3, without loading it anywhere.
 
@@ -145,30 +150,33 @@ Click your account name in the **top-right** of the console. The 12-digit **Acco
 3. Click `demo-cli` → **Security credentials** tab → **Access keys** → **Create access key**.
 4. Choose **Command Line Interface (CLI)** → tick the confirmation → **Next** → **Create access key**.
 5. **Copy both keys now** (the secret is shown only once).
+6. If someone else's laptop will do the Docker steps (see Part 0.1), send them **privately**
+   (direct message, not a group chat): the two keys, the account B **Account ID**, and `<BUCKET_B>` (from B3).
 
-## B2. Laptop setup (one time)
-1. Install **Docker Desktop** (https://www.docker.com/products/docker-desktop/), open it, leave it running.
+## B2. Docker laptop setup (one time, on whichever laptop does the Docker steps)
+1. Install **Docker Desktop** (https://www.docker.com/products/docker-desktop/), open it, and wait until it
+   says "Engine running". Leave it open.
 2. Install **AWS CLI** (https://aws.amazon.com/cli/ → Windows installer). Reopen your terminal. Check: `aws --version`.
 3. `pip install boto3`
-4. Run `aws configure` and enter the two keys, region `us-east-1`, and press Enter for the output format.
-5. Test: `aws sts get-caller-identity` prints your account ID.
-6. Put the model files in the repo folder at exactly:
+4. Run `aws configure` and enter **account B's** two keys, region `us-east-1`, and press Enter for the output format.
+   (If this laptop already had other AWS keys configured, this replaces them. That's fine for the demo.)
+5. Test: `aws sts get-caller-identity` must print **account B's** Account ID. If it shows a different number,
+   redo step 4.
+6. The repo on this laptop must contain the model files at exactly:
    `models/stacked/stacked_model.pkl` and `models/preprocessor.pkl`
-   (Don't have them? Follow `TRAINING.md` in the repo root to regenerate them, ~30–60 min.)
+   (They already exist on the friend's laptop that trained them. `TRAINING.md` is only for regenerating them if lost.)
 
 ## B3. S3 bucket (for the model file)
 **S3** → **Create bucket** → name `<BUCKET_B>` → defaults → **Create bucket**. Leave it empty; the script fills it.
 
 ## B4. SageMaker (host the model)
 
-**4a. Set library versions (important).** On the laptop that trained the model, run:
-```
-pip show scikit-learn xgboost lightgbm
-python --version
-```
-Edit `aws/sagemaker/requirements.txt` to the exact versions, e.g. `scikit-learn==1.6.1`, `xgboost==2.1.3`,
-`lightgbm==4.5.0`. If Python isn't 3.13, change `FROM python:3.13-slim` in `aws/sagemaker/Dockerfile`
-(e.g. to `python:3.12-slim`).
+**Who does what in B4:** 4b and 4e are done by the **B person in the console**. 4c, 4c-check and 4d are done
+on the **Docker laptop** (B2). Order: B1 → B3 → 4b (B person) → B2, 4c, 4c-check, 4d (Docker laptop) → 4e onwards (B person).
+
+**4a. Versions: nothing to do.** The library versions are **already pinned** in
+`aws/sagemaker/requirements.txt` (scikit-learn 1.9.1, XGBoost 3.2.0, LightGBM 4.x, read directly from
+the model files). The Dockerfile uses Python 3.13, which is fine.
 
 **4b. Create an image repository.** Open **Elastic Container Registry** (search "ECR") → **Create repository**
 (or "Get started") → **Repository name**: `credit-risk` → defaults → **Create**.
@@ -187,6 +195,23 @@ docker push <ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/credit-risk:latest
 - The first command should print `Login Succeeded`.
 - In the ECR console → `credit-risk`, you should now see an image tagged `latest`.
 
+**4c-check (optional but recommended, ~3 min): test the image locally before/after pushing.**
+This runs the exact container SageMaker will run, the same way SageMaker runs it (model files under
+`/opt/ml/model`, requests on port 8080). If it works here, it works on SageMaker.
+1. In a terminal **in the repo folder** (PowerShell):
+   ```
+   docker run --rm -p 8080:8080 -v "${PWD}/models:/opt/ml/model/models" credit-risk
+   ```
+   Leave it running. It should print `Running on http://0.0.0.0:8080`.
+2. In a **second** terminal:
+   ```
+   curl.exe -X POST http://localhost:8080/invocations -H "Content-Type: application/json" -d "{\"AMT_CREDIT\": 500000, \"AMT_INCOME_TOTAL\": 180000}"
+   ```
+   Expected: `{"probability": 0.3..., "decision": "...", "tier": "..."}`.
+   - `{"error": ...}` or a crash in the first terminal = something's wrong. Copy the error text and ask for help
+     **before** deploying (fixing it here takes minutes; fixing it on SageMaker takes ~15 min per try).
+3. Stop the container: press `Ctrl + C` in the first terminal.
+
 **4d. Deploy.** Set `BUCKET = "<BUCKET_B>"` in `aws/deploy_sagemaker.py`, then from the repo folder:
 ```
 python aws/deploy_sagemaker.py
@@ -195,8 +220,8 @@ This uploads the model to `s3://<BUCKET_B>/models/model.tar.gz` and creates the 
 
 **4e. Watch it.** Open **Amazon SageMaker AI** → left menu **Inference** → **Endpoints** (close any "Studio" popup;
 you don't need Studio). `credit-risk-endpoint` goes **Creating** → **InService** in ~5–10 min.
-- If **Failed**: click it → **View logs** (CloudWatch). It's almost always a version mismatch from 4a.
-  Fix the versions, then redo 4c and 4d.
+- If **Failed**: click it → **View logs** (CloudWatch) and read the last error lines. After fixing,
+  redo 4c and 4d (re-running `deploy_sagemaker.py` updates the existing endpoint).
 
 **Demo talking point:** our trained stacked ensemble runs on a **serverless** SageMaker endpoint, billed only per call.
 
@@ -269,7 +294,9 @@ No IAM role needed in this account.
    - **Default root object**: `credit-risk-demo.html`
    - Everything else default → **Create distribution**.
    (If the wizard asks for a plan/pricing tier, pick the **free** one. If it offers
-   "Allow private S3 bucket access to CloudFront", keep it selected.)
+   "Allow private S3 bucket access to CloudFront", keep it selected. If you don't see **Default root object**
+   in the wizard, set it after creating: your distribution → **General** tab → **Settings** → **Edit** →
+   **Default root object** `credit-risk-demo.html` → **Save changes**.)
 2. If a yellow banner says **"The S3 bucket policy needs to be updated"** → **Copy policy** → S3 → `<BUCKET_C>` →
    **Permissions** tab → **Bucket policy** → **Edit** → paste → **Save changes**.
    (If the console updated it automatically, skip this.)
