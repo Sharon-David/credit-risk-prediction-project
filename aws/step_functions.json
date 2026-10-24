@@ -5,11 +5,25 @@
     "GluePreprocess": {
       "Type": "Task",
       "Resource": "arn:aws:states:::glue:startJobRun.sync",
-      "Parameters": { "JobName": "credit-risk-preprocess" },
-      "Catch": [{ "ErrorEquals": ["States.ALL"], "Next": "PipelineFailed" }],
+      "Parameters": {
+        "JobName": "credit-risk-preprocess"
+      },
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "Next": "PipelineFailed"
+        }
+      ],
       "Next": "Done"
     },
-    "Done": { "Type": "Succeed" },
-    "PipelineFailed": { "Type": "Fail", "Error": "PipelineFailed" }
+    "Done": {
+      "Type": "Succeed"
+    },
+    "PipelineFailed": {
+      "Type": "Fail",
+      "Error": "PipelineFailed"
+    }
   }
 }

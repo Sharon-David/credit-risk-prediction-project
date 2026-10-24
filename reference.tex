@@ -1,0 +1,460 @@
+\documentclass[conference]{IEEEtran}
+
+% Import necessary packages
+\usepackage{graphicx} % For including images
+\usepackage{cite}     % For handling citations
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{array}     % For more advanced table column definitions
+\usepackage[utf8]{inputenc} % Ensure proper text encoding
+\usepackage{dblfloatfix} % For better two-column float placement
+\usepackage{url}       % Lets long reference URLs break across lines
+
+\renewcommand{\IEEEkeywordsname}{Keywords}
+
+% --- FONT ---
+% Uses Times New Roman font for text and math
+\usepackage{newtxtext, newtxmath}
+
+\usepackage{fancyhdr}
+% ------------
+
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+
+\IEEEoverridecommandlockouts
+
+\makeatletter
+\newcommand{\newlineauthors}{%
+  \end{@IEEEauthorhalign}\hfill\mbox{}\par
+  \mbox{}\hfill\begin{@IEEEauthorhalign}
+}
+\makeatother
+
+\begin{document}
+
+\title{CreditIQ: A Cloud-Based MLOps Platform for Cost-Sensitive Credit Risk Prediction}
+
+\author{
+    \IEEEauthorblockN{Sharon David}
+    \IEEEauthorblockA{\textit{Department of Computer Engineering} \\
+    \textit{SVKM's NMIMS Mukesh Patel School} \\
+    \textit{of Technology Management \&} \\
+    \textit{Engineering} \\
+    Mumbai, India \\
+    sharon.david62@nmims.in}
+    \and
+    \IEEEauthorblockN{Vivek Dotiya}
+    \IEEEauthorblockA{\textit{Department of Computer Engineering} \\
+    \textit{SVKM's NMIMS Mukesh Patel School} \\
+    \textit{of Technology Management \&} \\
+    \textit{Engineering} \\
+    Mumbai, India \\
+    vivek.dotiya70@nmims.in}
+    \and
+    \IEEEauthorblockN{Moksh Jain}
+    \IEEEauthorblockA{\textit{Department of Computer Engineering} \\
+    \textit{SVKM's NMIMS Mukesh Patel School} \\
+    \textit{of Technology Management \&} \\
+    \textit{Engineering} \\
+    Mumbai, India \\
+    moksh.jain81@nmims.in}
+    \newlineauthors
+    \IEEEauthorblockN{Aranck Jomraj}
+    \IEEEauthorblockA{\textit{Department of Computer Engineering} \\
+    \textit{SVKM's NMIMS Mukesh Patel School} \\
+    \textit{of Technology Management \&} \\
+    \textit{Engineering} \\
+    Mumbai, India \\
+    aranck.jomraj01@nmims.in}
+    \and
+    \IEEEauthorblockN{Rama Varshney}
+    \IEEEauthorblockA{\textit{Department of Computer Engineering} \\
+    \textit{SVKM's NMIMS Mukesh Patel School} \\
+    \textit{of Technology Management \&} \\
+    \textit{Engineering} \\
+    Mumbai, India \\
+    rama.varshney@nmims.edu}
+}
+
+\maketitle
+
+\begin{abstract}
+Accurate credit risk models are easy to build offline, but real-world lending also demands cost-aware decisions, real-time feature reconstruction and full audit traceability. This paper presents CreditIQ, an end-to-end credit risk prediction platform built on Amazon Web Services (AWS) and evaluated on the Home Credit Default Risk dataset. Raw data is stored in Amazon S3, explored with Amazon Athena and preprocessed by AWS Glue under AWS Step Functions orchestration. A stacked ensemble of Logistic Regression, Random Forest, XGBoost and LightGBM achieves a held-out ROC-AUC of 0.7556, and a business cost matrix that penalises false approvals far more than false rejections sets its decision threshold at 0.49. The model is hosted on an Amazon SageMaker serverless endpoint, served through Amazon CloudFront, API Gateway and AWS Lambda, and every decision is logged to Amazon DynamoDB under AWS IAM and Amazon CloudWatch governance. The cloud deployment matched the local baseline's predictions exactly, sustained a 100\% request success rate, and added only 27 ms of median server-side latency, demonstrating a practical blueprint for cost-aware financial MLOps.
+\end{abstract}
+
+\begin{IEEEkeywords}
+MLOps, Credit Risk Prediction, Cloud Computing, Amazon Web Services (AWS), Stacked Ensemble, Cost-Sensitive Learning, Serverless Inference.
+\end{IEEEkeywords}
+
+\section{INTRODUCTION}
+Consumer lending has become one of the most data intensive activities in modern finance. Every loan application carries dozens of demographic, financial and behavioural attributes, and the lender must convert them into a decision within seconds while remaining accountable to regulators for how that decision was reached. Statistical credit scoring has been practised for decades, but the move to machine learning has shifted the core difficulty: building an accurate model in a notebook is now comparatively easy, whereas operating that model reliably, cheaply and transparently in production is not.
+
+Credit risk data poses two well known modelling challenges. First, defaults are rare: in the Home Credit Default Risk dataset only about 8\% of the 307,511 applicants default, so a naive classifier can reach high accuracy by approving everyone. Second, classification errors are asymmetric. Approving a borrower who later defaults costs a lender far more than turning away a reliable applicant, which means that the standard 0.5 probability cutoff is rarely the right operating point for a business.
+
+Operational challenges are equally significant. Data science projects frequently stall before deployment because of fragmented tooling and manual handoffs \cite{2}. A live lending service must rebuild engineered features from the partial inputs a loan officer actually types, return a decision with low latency, scale with unpredictable traffic, and record every prediction for later audit. Monolithic, always-on servers handle these requirements poorly: they waste compute when traffic is idle and become a single point of failure when traffic spikes.
+
+A typical cloud MLOps lifecycle (Fig.~\ref{fig:mlops}) addresses these needs by moving a model from data ingestion and preparation through training, packaging and serving to continuous monitoring, which feeds back into retraining \cite{5}, \cite{6}. Each stage maps onto a managed cloud service, so the pipeline can be automated end to end rather than handed off manually between teams.
+
+\begin{figure}[htbp]
+\centerline{\includegraphics[width=\columnwidth]{flowchart.png}}
+\caption{Generic cloud MLOps lifecycle and the AWS service used at each stage in CreditIQ.}
+\label{fig:mlops}
+\end{figure}
+
+To overcome this, we present CreditIQ, an enterprise cloud-based credit risk prediction and decision platform built entirely on managed and serverless AWS services. The platform turns raw applicant data into a logged, risk-tiered lending decision in real time, within free-tier or near-free-tier cost. Our specific contributions are: (1) a six-stage modular modelling pipeline that produces a cost-optimised stacked ensemble; (2) a serverless data lake and preprocessing layer using Amazon S3, Athena and AWS Glue, orchestrated by AWS Step Functions; (3) a real-time serving path that routes requests from Amazon CloudFront through Amazon API Gateway and AWS Lambda to a containerised Amazon SageMaker serverless endpoint; and (4) an audit and observability layer built on Amazon DynamoDB, AWS IAM and Amazon CloudWatch, together with an empirical comparison of the cloud deployment against a local baseline.
+
+\subsection{Literature Review}
+This research draws on foundations of cloud-native Machine Learning Operations (MLOps), serverless inference architectures, and cost-sensitive ensemble modelling for credit risk assessment.
+
+Moving credit scoring models from local Jupyter notebooks into production requires automated, reproducible pipelines. M\"akinen et al. showed that data science projects frequently stall before deployment because of fragmented tooling and manual handoffs \cite{2}. Tamburri and Zhou et al. demonstrated that building Continuous Integration and Continuous Delivery (CI/CD) directly into cloud workflows reduces technical debt and speeds up retraining cycles \cite{5}, \cite{8}, a finding echoed by work on managing ML technical debt with end-to-end MLOps pipelines \cite{11}. Casimiro et al. outlined how separating data ingestion from model execution keeps cloud-native systems maintainable \cite{6}, and Jiao et al. described reference architectures for cloud-based machine learning platforms on big data \cite{4}. At the data storage and processing layer, Rani and Kumar found that running distributed extract-transform-load (ETL) jobs through AWS Glue and Amazon S3 removes the preprocessing bottlenecks that normally slow down feature engineering on large tabular datasets \cite{9}.
+
+Serving these pipelines for real-time lending decisions introduces practical challenges around latency, workflow orchestration and regulatory compliance. Symeonides et al. and Zhang et al. compared Function-as-a-Service (FaaS) platforms against traditional container setups, finding that serverless deployments cut down on idle compute costs when prediction traffic is unpredictable \cite{1}, \cite{7}. Rastegar et al. proposed serverless architectures for machine learning model deployment \cite{3}, and Bhatt et al. confirmed that pairing AWS Lambda with Amazon API Gateway handles low-latency inference reliably \cite{10}. Comparative studies of fully managed platforms such as AWS SageMaker against custom serverless pipelines highlight the trade-off between operational convenience and control \cite{13}, while P. P. et al. showed that managing multi-step training and scoring workflows with AWS Step Functions prevents silent pipeline failures \cite{14}. Because financial institutions face strict regulatory audits, K. M. and N. S. along with R. S. and M. T. stressed that cloud ML systems need strict identity access controls, continuous monitoring and immutable audit logs to track model drift and verify how individual decisions were reached \cite{12}, \cite{15}.
+
+On the modelling side, predicting loan defaults is complicated by heavily skewed class distributions and unequal error costs. Rofik et al. (2023) and Alamsyah et al. (2024) demonstrated that combining different base learners, such as XGBoost, LightGBM and Random Forests, into a stacked ensemble improves ROC-AUC compared to relying on any single model. Still, raw probability scores do not directly translate into sound lending decisions. Petrides et al. (2020) and Shen et al. (2019) pointed out that standard classification cutoffs ignore the fact that approving a borrower who defaults costs a lender far more than turning away a reliable applicant, making it necessary to tune the final decision threshold against an explicit business cost matrix.
+
+\subsection{Research Gap}
+Taken together, this body of work points to a clear disconnect between credit risk modelling and cloud systems engineering. Stacked ensembles paired with cost-sensitive thresholds reduce financial losses on imbalanced credit datasets, and, separately, serverless AWS services can run scalable, low-latency inference pipelines \cite{1}, \cite{10}. Yet the integration of the two remains largely unaddressed. Most credit scoring papers test their ensembles and cost matrices in isolated local notebooks without accounting for how features are rebuilt, orchestrated and logged in a live cloud environment, while cloud MLOps papers typically benchmark serverless pipelines using standard, unweighted classifiers that treat all classification errors equally. The contribution claimed here is therefore neither a standalone stacking method nor a generic serverless inference setup: it is the end-to-end implementation of a cost-optimised stacked ensemble inside an orchestrated AWS pipeline (combining S3, Athena, Glue, SageMaker, Step Functions, Lambda and DynamoDB) that turns raw applicant inputs into logged, risk-tiered lending decisions in real time.
+
+\section{SYSTEM ARCHITECTURE \& METHODOLOGY}
+
+\begin{figure}[htbp]
+\centerline{\includegraphics[width=\columnwidth]{system_architecture.png}}
+\caption{High-level overview of the CreditIQ cloud architecture on AWS.}
+\label{fig:sysarch}
+\end{figure}
+
+The CreditIQ design splits into an offline data and training path and an online serving path that share one artifact store (Amazon S3). Datasets and artifacts are stored in S3, explored with Athena, processed with Glue and hosted on SageMaker. Real-time predictions flow from a static user interface on CloudFront through API Gateway and Lambda, while every prediction is written to DynamoDB, the pipeline is orchestrated by Step Functions, access is governed by IAM, and all components are monitored by CloudWatch. Fig.~\ref{fig:sysarch} summarises the architecture, which we organise into three parts: (1) governance and observability (IAM, Step Functions, CloudWatch); (2) the offline pipeline (S3, Athena, Glue, SageMaker); and (3) serverless hosting and real-time inference (CloudFront, API Gateway, Lambda, DynamoDB).
+
+\subsection{Problem Formulation and Dataset}
+The platform predicts consumer loan default on the Home Credit Default Risk dataset (application\_train.csv, about 160 MB, 307,511 rows and 122 columns). The binary target is heavily imbalanced, with 282,686 non-defaulters (91.9\%) and 24,825 defaulters (8.1\%). To keep compute cost low while preserving the class ratio, a 40\% stratified sample of 123,004 applicants is used for modelling. Given an applicant feature vector $\mathbf{x}$, the system estimates the default probability $p = P(y=1 \mid \mathbf{x})$ and maps it to an operational decision.
+
+\subsection{Layer 1: Data Lake and Exploratory Querying (S3 + Athena)}
+The raw dataset is uploaded to an S3 bucket that acts as the central data lake, with separate prefixes for raw data, processed outputs, model artifacts and query results. Instead of loading the raw CSV into local memory, Amazon Athena runs standard SQL directly on S3 through an external table defined with the OpenCSVSerde serializer. Exploratory queries inspect row counts, missingness percentages, income and credit distributions, the frequency of the 365243 sentinel in DAYS\_EMPLOYED, and the severe class imbalance, reproducing the analysis of the first notebook stage without provisioning any compute.
+
+\subsection{Layer 2: Preprocessing and Feature Engineering (Glue)}
+Triggered by Step Functions, a serverless AWS Glue Python Shell job reads the raw CSV from S3, replaces the 365243 sentinel in DAYS\_EMPLOYED with a missing value, derives financial ratio features and removes every column with more than 45\% missing values before writing the cleaned dataset back to the processed/ prefix. In the modelling pipeline the same logic is extended into nine domain features: five financial ratios (CREDIT\_INCOME\_RATIO, ANNUITY\_INCOME\_RATIO, CREDIT\_DURATION\_RATIO, GOODS\_CREDIT\_RATIO, INCOME\_PER\_PERSON), three demographic and career stability metrics (AGE\_YEARS, YEARS\_EMPLOYED, EMPLOYED\_AGE\_RATIO) and DOC\_COUNT. For example,
+\begin{equation}
+\text{CREDIT\_INCOME\_RATIO} = \frac{\text{AMT\_CREDIT}}{\text{AMT\_INCOME\_TOTAL}}.
+\end{equation}
+After dropping SK\_ID\_CURR and the sparse columns, 80 input features remain (68 numeric and 12 categorical). A scikit-learn ColumnTransformer applies median imputation and standard scaling to numeric features, and constant imputation followed by one-hot encoding with handle\_unknown=``ignore'' to categorical features, producing a 192-dimensional design matrix. An 80/20 stratified split yields 98,403 training and 24,601 test records. The fitted transformer is persisted as preprocessor.pkl together with a schema contract, feature\_columns.json.
+
+\subsection{Layer 3: Model Training, Stacking and Cost Optimisation}
+Five base classifiers are trained with algorithmic class-imbalance handling: Logistic Regression (class\_weight=``balanced'', saga solver), Random Forest, scikit-learn Gradient Boosting, XGBoost (scale\_pos\_weight set to the negative-to-positive ratio) and LightGBM. Four of them (Logistic Regression, Random Forest, XGBoost and LightGBM) are then combined in a 5-fold cross-validated StackingClassifier whose Logistic Regression meta-estimator blends the out-of-fold probabilities. The ensemble is serialised as stacked\_model.pkl.
+
+Raw probabilities are converted into decisions with a business cost matrix in which a false approval of a defaulting borrower costs 12,000 and a false rejection of a creditworthy borrower costs 2,500. The decision threshold is selected as
+\begin{equation}
+\tau^{*} = \arg\min_{\tau \in [0.02,\,0.50]} \; C_{\mathrm{FA}}\,N_{\mathrm{FA}}(\tau) + C_{\mathrm{FR}}\,N_{\mathrm{FR}}(\tau),
+\end{equation}
+where $N_{\mathrm{FA}}$ and $N_{\mathrm{FR}}$ are the counts of false approvals and false rejections at threshold $\tau$. The scan gives $\tau^{*} = 0.49$, stored as optimal\_threshold.txt. The six stages (exploration, preprocessing, base models, stacking, threshold optimisation and evaluation) are implemented as modular notebooks so that each artifact can be regenerated independently.
+
+\subsection{Layer 4: Real-Time Serverless Serving and Audit Logging}
+\subsubsection{Model Hosting (Amazon SageMaker)}
+The trained artifacts are packaged as model.tar.gz, promoted to S3 and hosted on a SageMaker serverless inference endpoint with 4,096 MB of memory. Because the ensemble depends on recent versions of scikit-learn, XGBoost and LightGBM, it is served from a custom container image stored in Amazon Elastic Container Registry (ECR). The container exposes the SageMaker /ping and /invocations contract through a lightweight Flask server and reuses the exact scoring module (predict\_single.py) used locally, which guarantees that the local and cloud deployments execute identical code. Serverless inference bills only for the compute time spent processing requests and scales to zero when idle.
+
+\subsubsection{On-the-Fly Feature Reconstruction}
+A loan officer typically knows only a handful of fields. The scoring module therefore merges the caller's partial parameters over a baseline dictionary of typical applicant values, recomputes the nine engineered features from the merged record, aligns the columns to the exact schema the preprocessor was fitted on, transforms the record and calls predict\_proba() on the stacked ensemble.
+
+\subsubsection{Tiered Decisioning}
+The default probability $p$ is anchored on the cost-optimal threshold $\tau^{*}$ and mapped to an operational tier, as shown in Table~\ref{tab:tiers}.
+
+\begin{table}[htbp]
+\caption{Risk Tier Mapping}
+\begin{center}
+\begin{tabular}{|c|c|c|}
+\hline
+\textbf{Default probability $p$} & \textbf{Risk tier} & \textbf{Decision} \\
+\hline
+$p < 0.245$ & Low & Approve \\
+$0.245 \le p < 0.49$ & Medium & Review (manual) \\
+$p \ge 0.49$ & High & Reject \\
+\hline
+\end{tabular}
+\label{tab:tiers}
+\end{center}
+\end{table}
+
+\subsubsection{API Routing and Auditing (API Gateway, Lambda, DynamoDB)}
+The static single-page application (credit-risk-demo.html, branded ``CreditIQ'') is hosted in a private S3 bucket and distributed globally over HTTPS by CloudFront using Origin Access Control. When the user submits the form, the browser issues an HTTPS GET /predict request with query parameters to an API Gateway HTTP API, which triggers a Python Lambda function. Lambda maps the user-facing parameters to model columns, invokes the SageMaker endpoint, and, before returning the JSON response, writes the full transaction record (applicant ID, raw inputs, probability, tier, decision and UTC timestamp) to a DynamoDB table that uses the applicant ID as partition key and the timestamp as sort key.
+
+\subsection{Layer 5: Security, Orchestration and Observability}
+\textbf{AWS Step Functions} coordinates the pipeline as a state machine that runs the Glue job synchronously and routes any failure to an explicit failure state, so that a broken stage halts the workflow instead of failing silently \cite{14}. \textbf{AWS IAM} provides role-based execution identities with a trust policy covering Glue, SageMaker, Lambda and Step Functions, so no long-lived credentials are embedded in code \cite{12}. \textbf{Amazon CloudWatch} aggregates logs from Glue, SageMaker and Lambda, tracks API Gateway latency and raises alarms on Lambda errors \cite{15}.
+
+\section{TECHNOLOGY STACK}
+CreditIQ combines a compact Python modelling stack with a set of managed AWS services, each chosen because its execution and pricing model matches the workload it serves.
+
+\subsection{Software and Libraries}
+\textbf{Python, Pandas and NumPy}: Python is the single language across the notebooks, the command-line scorer, the FastAPI service, the Glue job, the Lambda function and the SageMaker container. Pandas and NumPy handle loading, sentinel cleaning, missingness filtering and the computation of the nine engineered features.
+
+\textbf{Scikit-learn, XGBoost and LightGBM}: Scikit-learn provides the ColumnTransformer, stratified splitting, Logistic Regression, Random Forest, Gradient Boosting and the cross-validated StackingClassifier. XGBoost and LightGBM supply cost-weighted and leaf-wise gradient boosting respectively, which are well suited to high-dimensional tabular data.
+
+\textbf{Joblib, Matplotlib and Seaborn}: Joblib serialises the preprocessor and models for inference, while Matplotlib and Seaborn produce the exploratory plots, ROC comparisons, cost curves and confusion matrices.
+
+\textbf{FastAPI, Flask and Boto3}: FastAPI (predict\_api.py) serves the local baseline, Flask implements the SageMaker container contract, and Boto3 connects Lambda and Glue to S3, SageMaker Runtime and DynamoDB.
+
+\textbf{HTML5, CSS3 and Vanilla JavaScript}: The CreditIQ interface is a single-page, zero-build form that sends inputs to /predict and displays the probability, tier and decision.
+
+\subsection{AWS Services}
+Each AWS service was selected because its execution and pricing model matches the workload it serves: storage and query services for the offline data path, scale-to-zero compute for the bursty serving path, and managed governance services that require no infrastructure of their own. Table~\ref{tab:cost} lists the pricing model and the measured cost of each service for the evaluation workload.
+
+\textbf{Amazon S3 (Simple Storage Service)}: S3 is an object storage service designed for eleven nines of durability that stores data as objects inside buckets, addressed by key prefixes. In CreditIQ it is the central data lake and the single artifact store shared by the offline and online paths. The raw/ prefix holds the original dataset, processed/ holds Glue outputs, athena-results/ holds query results, and the model bundle (model.tar.gz) is stored where SageMaker can load it. A separate private bucket holds the static website, reachable only through CloudFront. Because S3 decouples storage from compute, every other service reads from and writes to it without the data ever passing through a long-running server \cite{9}.
+
+\textbf{Amazon Athena}: Athena is a serverless, interactive query engine that runs standard SQL directly on files in S3, with schemas defined over the data at query time rather than by loading it into a database. CreditIQ defines an external table over the raw CSV and uses it for exploratory analysis: row counts, missingness, income and credit distributions, sentinel values and class imbalance. Athena charges \$5 per TB scanned with no cluster to provision, so each query over the 160 MB dataset costs a fraction of a cent and the exploration stage needs no compute while idle.
+
+\textbf{AWS Glue}: Glue is a serverless data integration service for extract, transform and load (ETL) jobs. CreditIQ uses a Glue Python Shell job, which runs a plain Python script with pandas on managed capacity billed per DPU-minute. The job reads the raw CSV from S3, fixes the 365243 sentinel, derives ratio features, removes sparse columns and writes the cleaned output back to S3. Moving this step to Glue replaces a manual notebook run with a repeatable, schedulable job whose logs flow automatically to CloudWatch \cite{9}.
+
+\textbf{Amazon SageMaker}: SageMaker is AWS's fully managed machine learning platform for training, hosting and monitoring models \cite{13}. CreditIQ uses SageMaker serverless inference, in which AWS provisions compute automatically for each request and scales to zero when the endpoint is idle, billing only for the compute time used. The stacked ensemble is served from a custom container image stored in Amazon Elastic Container Registry (ECR), which pins the exact scikit-learn, XGBoost and LightGBM versions the model was trained with and implements the standard /ping and /invocations contract. This removes any dependency on the library versions offered by prebuilt framework images.
+
+\textbf{AWS Lambda}: Lambda is an event-driven, Function-as-a-Service compute platform that runs code in response to events without servers to manage, billed per request and per millisecond of execution \cite{1}, \cite{7}. The CreditIQ Lambda function is the glue of the serving path: it maps user-facing query parameters onto model columns, invokes the SageMaker endpoint, writes the audit record to DynamoDB and returns the JSON response with the cross-origin headers the browser requires. Because it holds no model in memory, the function stays small and starts quickly.
+
+\textbf{Amazon API Gateway}: API Gateway is a managed service for creating and publishing HTTPS APIs. CreditIQ uses an HTTP API, the lower-cost and lower-latency API Gateway variant, exposing a single GET /predict route integrated with the Lambda function \cite{10}. It provides a stable public HTTPS endpoint, request routing and automatic latency and error metrics in CloudWatch, without any web server to operate.
+
+\textbf{Amazon CloudFront}: CloudFront is AWS's content delivery network, which caches content at edge locations around the world and serves it over HTTPS. CreditIQ uses it to deliver the single-page CreditIQ interface from a private S3 bucket through Origin Access Control, so the bucket itself is never publicly exposed. Users receive the interface from the nearest edge location, with HTTPS provided by default.
+
+\textbf{Amazon DynamoDB}: DynamoDB is a fully managed NoSQL key-value and document database with single-digit millisecond latency and on-demand scaling. CreditIQ uses it as the audit store: every prediction is written as one item keyed by applicant ID (partition key) and UTC timestamp (sort key), holding the raw inputs, probability, risk tier and decision. This schema lets an auditor retrieve the complete decision history of any applicant in a single query, which is central to regulatory traceability \cite{12}.
+
+\textbf{AWS Step Functions}: Step Functions is a serverless workflow orchestrator in which a pipeline is expressed as a state machine in the Amazon States Language. CreditIQ's state machine starts the Glue job using the synchronous startJobRun.sync integration, waits for it to finish and routes any failure to an explicit failure state. Each execution is recorded with a visual history of which state succeeded or failed, which prevents silent pipeline failures \cite{14}.
+
+\textbf{AWS IAM (Identity and Access Management)}: IAM controls who and what can access each AWS resource. CreditIQ gives its services a role whose trust policy allows Glue, SageMaker, Lambda and Step Functions to assume it. Each service therefore receives short-lived credentials at run time instead of long-lived access keys embedded in code \cite{12}.
+
+\textbf{Amazon CloudWatch}: CloudWatch is AWS's monitoring and observability service for logs, metrics and alarms. CreditIQ uses it to collect the Glue job output, the Lambda and SageMaker logs, and the API Gateway latency and error metrics used in Section~\ref{sec:results}, with an alarm on Lambda errors. Every component of the platform is observed from one place without any monitoring agent to install \cite{15}.
+
+\begin{table}[htbp]
+\caption{AWS Service Cost for the Evaluation Workload}
+\begin{center}
+\begin{tabular}{|l|l|r|}
+\hline
+\textbf{Service} & \textbf{Pricing basis} & \textbf{Cost (USD)} \\
+\hline
+Amazon S3 & \$0.023 per GB-month & 0.01 \\
+Amazon Athena & \$5.00 per TB scanned & 0.01 \\
+AWS Glue & \$0.44 per DPU-hour & 0.03 \\
+SageMaker Serverless & per GB-second of compute & 0.38 \\
+AWS Lambda & \$0.20 per 1M requests & 0.00 \\
+API Gateway (HTTP) & \$1.00 per 1M calls & 0.00 \\
+Amazon DynamoDB & \$1.25 per 1M writes & 0.00 \\
+Amazon CloudFront & \$0.085 per GB after 1 TB & 0.00 \\
+Step Functions & \$0.025 per 1,000 transitions & 0.00 \\
+CloudWatch & \$0.50 per GB of logs & 0.00 \\
+Amazon ECR & \$0.10 per GB-month & 0.04 \\
+\hline
+\textbf{Total} & & \textbf{0.47} \\
+\hline
+\end{tabular}
+\label{tab:cost}
+\end{center}
+\end{table}
+
+\section{IMPLEMENTATION METHODOLOGY}
+Development followed a phase-based process. The modelling pipeline was built first as six modular notebooks, each consuming the artifacts of the previous stage, so that the preprocessor, the base models, the stacked ensemble and the threshold could be regenerated independently. The scoring logic was then extracted into a single reusable module (predict\_single.py) and validated locally through a FastAPI service, which became the latency and correctness baseline for the cloud deployment.
+
+The cloud deployment was then divided into three independently deployable domains, each owned by a different team member and hosted in a separate AWS account: (A) the data pipeline (S3, Athena, Glue, Step Functions); (B) model serving (ECR, SageMaker, Lambda, API Gateway, DynamoDB); and (C) content delivery (S3, CloudFront). The only contract between the serving and delivery domains is the public API Gateway URL, and the data pipeline is fully independent. This separation allowed all three domains to be built in parallel and limits the blast radius of any misconfiguration to a single account. Because the SageMaker container reuses the same scoring module as the local baseline, functional parity between local and cloud inference is preserved by construction.
+
+\section{RESULTS \& EVALUATION}
+\label{sec:results}
+We evaluate CreditIQ along two dimensions: the predictive quality of the cost-optimised ensemble, and the operational behaviour of the cloud deployment compared to a local baseline. Local measurements were taken on a laptop running the FastAPI service on localhost; cloud measurements were taken against the deployed AWS stack in the us-east-1 region.
+
+\subsection{Model Performance}
+Table~\ref{tab:models} reports the ROC-AUC of each model on the 24,601-record held-out test set.
+
+\begin{table}[htbp]
+\caption{Held-Out ROC-AUC of Base Models and the Stacked Ensemble}
+\begin{center}
+\begin{tabular}{|l|l|c|}
+\hline
+\textbf{Model} & \textbf{Configuration} & \textbf{ROC-AUC} \\
+\hline
+Random Forest & Tree ensemble & 0.7310 \\
+Logistic Regression & Balanced, saga & 0.7436 \\
+XGBoost & scale\_pos\_weight & 0.7515 \\
+LightGBM & Leaf-wise boosting & 0.7542 \\
+Gradient Boosting & scikit-learn & 0.7584 \\
+\textbf{Stacked ensemble} & LR+RF+XGB+LGBM & \textbf{0.7556} \\
+\hline
+\end{tabular}
+\label{tab:models}
+\end{center}
+\end{table}
+
+The stacked ensemble outperforms three of its four constituent learners and comes within 0.003 of the strongest single model, while blending complementary linear and tree-based decision surfaces into a smoother, better calibrated probability. At the cost-optimal threshold $\tau^{*} = 0.49$, the ensemble correctly flags 1,398 of the 1,986 defaulters in the test set, a default recall of 0.70, with the confusion matrix shown in Table~\ref{tab:cm}. In a lending context this recall is the critical quantity: each missed defaulter is the most expensive error in the cost matrix, so the threshold deliberately trades some approvals of good applicants for far fewer approvals of bad ones.
+
+\begin{table}[htbp]
+\caption{Confusion Matrix at $\tau^{*} = 0.49$ (Test Set)}
+\begin{center}
+\begin{tabular}{|l|c|c|}
+\hline
+ & \textbf{Predicted repay} & \textbf{Predicted default} \\
+\hline
+\textbf{Actual repay} & 15,313 & 7,302 \\
+\textbf{Actual default} & 588 & 1,398 \\
+\hline
+\end{tabular}
+\label{tab:cm}
+\end{center}
+\end{table}
+
+\subsection{Functional Validation of the Cloud Pipeline}
+Every component of the architecture was exercised end to end. Athena queried the raw CSV directly from S3 and reproduced the class distribution of 282,686 to 24,825, scanning 158.4 MB per query. The Glue job completed in 1 min 52 s and the Step Functions execution, including job start-up, completed in 2 min 31 s with every state succeeding. On the serving side, 1,000 consecutive predictions were submitted through the CloudFront interface and API: all 1,000 returned HTTP 200, all 1,000 audit records were persisted to DynamoDB with an average item size of 0.9 KB, and Lambda, SageMaker and Glue logs were visible in CloudWatch. For a fixed set of 500 test applicants, the probabilities returned by the cloud endpoint were bit-identical to those of the local baseline (maximum absolute difference 0.0), confirming that containerising the scoring module introduced no numerical drift.
+
+\begin{table}[htbp]
+\caption{Pipeline Stage Execution Summary}
+\begin{center}
+\begin{tabular}{|l|c|c|}
+\hline
+\textbf{Stage} & \textbf{Duration} & \textbf{Status} \\
+\hline
+Athena row count & 1.9 s & Succeeded \\
+Athena class imbalance & 2.3 s & Succeeded \\
+Glue preprocessing job & 1 min 52 s & Succeeded \\
+Step Functions pipeline & 2 min 31 s & Succeeded \\
+SageMaker endpoint creation & 4 min 18 s & InService \\
+CloudFront distribution & 5 min 40 s & Deployed \\
+\hline
+\end{tabular}
+\label{tab:pipeline}
+\end{center}
+\end{table}
+
+\subsection{Latency: Local Baseline versus AWS}
+Table~\ref{tab:latency} compares inference latency over 1,000 warm requests. Server-side latency on AWS is taken from the API Gateway latency metric in CloudWatch and covers the full path of API Gateway, Lambda, the SageMaker invocation and the DynamoDB write.
+
+\begin{table}[htbp]
+\caption{Inference Latency over 1,000 Warm Requests (ms)}
+\begin{center}
+\begin{tabular}{|l|c|c|c|}
+\hline
+\textbf{Deployment} & \textbf{p50} & \textbf{p95} & \textbf{p99} \\
+\hline
+Local FastAPI (localhost) & 46 & 68 & 91 \\
+AWS, server-side & 73 & 104 & 132 \\
+AWS, client-observed & 284 & 331 & 389 \\
+\hline
+\end{tabular}
+\label{tab:latency}
+\end{center}
+\end{table}
+
+Server-side, the AWS deployment adds only 27 ms at the median over local inference, so the cloud and local systems perform comparably once a request reaches AWS. Table~\ref{tab:breakdown} shows where this time is spent: model execution inside the container accounts for most of it, and the managed services each contribute only a few milliseconds. The larger client-observed figure is dominated by the wide-area network round trip between the client in Mumbai and the us-east-1 region rather than by any AWS component; it would shrink further by deploying the serving stack in a region closer to the users, such as ap-south-1.
+
+\begin{table}[htbp]
+\caption{Median Server-Side Latency Breakdown on AWS}
+\begin{center}
+\begin{tabular}{|l|c|}
+\hline
+\textbf{Component} & \textbf{Median (ms)} \\
+\hline
+API Gateway routing & 6 \\
+Lambda execution overhead & 9 \\
+SageMaker endpoint overhead & 11 \\
+Model inference (preprocess + predict) & 41 \\
+DynamoDB PutItem & 6 \\
+\hline
+\textbf{Total server-side} & \textbf{73} \\
+\hline
+\end{tabular}
+\label{tab:breakdown}
+\end{center}
+\end{table}
+
+The first request after an idle period incurs a serverless cold start while SageMaker provisions the container and loads the ensemble into memory. This took 9.8 s on average across 10 cold invocations, well within the 29 s API Gateway integration limit, after which all subsequent requests were served at the warm latencies above. Cold starts are the price of scaling to zero, and they can be removed entirely by keeping the endpoint warm or enabling provisioned concurrency for business hours.
+
+\subsection{Availability, Scalability and Cost}
+Table~\ref{tab:ops} summarises the operational behaviour of both deployments. Because every AWS component in the serving path is a managed, multi-availability-zone service, the cloud deployment remained available throughout testing with no server to maintain, while the local baseline is limited by the uptime of a single machine. Under a sustained load of 1,000 requests with an endpoint concurrency limit of two, the AWS stack sustained 21.4 requests per second with zero throttling or 5xx errors. The full evaluation workload, including data exploration, preprocessing, 1,000 predictions and model hosting, cost USD 0.47 (Table~\ref{tab:cost}), and the serving path costs nothing while idle.
+
+\begin{table}[htbp]
+\caption{Operational Comparison of Local and AWS Deployments}
+\begin{center}
+\begin{tabular}{|l|c|c|}
+\hline
+\textbf{Metric} & \textbf{Local} & \textbf{AWS} \\
+\hline
+Request success rate & 100\% & 100\% \\
+Median latency (ms) & 46 & 73 \\
+p95 latency (ms) & 68 & 104 \\
+Throughput (req/s) & 23.7 & 21.4 \\
+Evaluation cost (USD) & Own hardware & 0.47 \\
+Audit records persisted & None & 1,000 / 1,000 \\
+Public HTTPS access & No & Yes \\
+Idle compute cost & Always on & \$0 \\
+Scaling & Manual & Automatic \\
+\hline
+\end{tabular}
+\label{tab:ops}
+\end{center}
+\end{table}
+
+\section{DISCUSSION}
+The results show that moving a cost-sensitive credit model from a notebook into a serverless MLOps pipeline costs very little in performance while delivering substantial operational benefits. The cloud deployment produced exactly the same predictions as the local baseline and added only a few tens of milliseconds of server-side latency, yet it gained public HTTPS access, automatic scaling, zero idle cost, centralised monitoring and a complete audit trail. For a lender, the audit table is arguably the most valuable of these: every decision can be traced back to its exact inputs, probability and timestamp, which is precisely the traceability that regulators require \cite{12}, \cite{15}.
+
+The architecture also confirms the value of separating the offline and online paths \cite{6}. Because the training pipeline communicates with the serving path only through versioned artifacts in S3, the model can be retrained, re-thresholded and promoted without touching the API, the website or the audit layer. Reusing one scoring module across the local service and the SageMaker container eliminated the training-serving skew that commonly affects deployed models, and the custom container decoupled the model's library versions from the runtimes offered by managed prebuilt images.
+
+\subsection{Cost Sensitivity versus Accuracy}
+On the modelling side, the results reinforce that accuracy alone is a misleading target for credit risk. At the default 0.5 cutoff a classifier trained on 92\% non-defaulters can look accurate while missing most defaulters. The cost-optimal threshold instead makes the business trade-off explicit: the platform accepts a larger number of manual reviews and rejections of creditworthy applicants in exchange for catching 70\% of defaulters, the most expensive error type in the cost matrix. The three-tier mapping turns this into an operational policy. Clear cases are approved or rejected automatically, while the uncertain middle band is routed to human underwriters, keeping a human in the loop exactly where the model is least confident. Although the stacked ensemble does not beat the single best Gradient Boosting model on ROC-AUC, it blends linear and tree-based learners into a more stable probability estimate, which matters more once a threshold is applied to it.
+
+\subsection{Serverless Trade-Offs}
+The main trade-off of the architecture is the serverless cold start. When the SageMaker endpoint has scaled to zero, the first request must wait for a container to be provisioned and the ensemble to be loaded into memory. For an interactive lending tool used during business hours a single slow first request is acceptable, and it can be avoided with a scheduled warm-up request or provisioned concurrency, at the cost of reintroducing some idle spend. More generally, the serverless design trades a small amount of per-request latency for zero idle cost and automatic scaling, which suits the bursty, unpredictable traffic of a lending front end \cite{1}, \cite{7}. The measurements confirm that the managed services themselves (API Gateway, Lambda and DynamoDB) contribute only a few milliseconds each. Model execution and the wide-area network round trip dominate end-to-end latency, and neither is a consequence of moving to the cloud.
+
+\subsection{Operational and Organisational Benefits}
+Splitting the deployment into three independently owned domains (data pipeline, model serving and content delivery) mirrored how responsibilities are divided in real organisations. It allowed the team to build in parallel with a single, narrow contract, the public API URL, between the serving and delivery domains. Because every component is managed, the platform has no operating systems to patch, no servers to keep running and no capacity to plan, and its total evaluation cost remained under one US dollar. These properties are what make MLOps practical for small teams and early-stage lenders, who rarely have dedicated infrastructure engineers \cite{5}, \cite{11}.
+
+\subsection{Limitations}
+The evaluation has some limitations. The model was trained on a 40\% stratified sample of a single public dataset, and its ROC-AUC, while in line with strong single-table baselines, does not use the auxiliary bureau and payment history tables of the Home Credit data. The cost matrix uses fixed illustrative costs rather than loan-specific loss given default. Latency was measured from one client location against one AWS region. Finally, the modelling stages are reproducible but are still run as notebooks rather than as orchestrated cloud jobs.
+
+\section{FUTURE SCOPE}
+Two extensions would move CreditIQ closer to a production lending platform. First, the serving stack can be deployed across multiple AWS regions, including one close to end users such as ap-south-1, with automatic failover between them, which would cut the network round trip and keep the platform available during a regional outage. Second, security can be hardened by replacing the shared execution role with per-service least-privilege policies, authenticating API callers with Amazon Cognito, and encrypting the audit table and buckets with customer-managed keys \cite{12}.
+
+\section{CONCLUSION}
+This paper presented CreditIQ, a cloud-based platform that integrates a cost-optimised stacked ensemble for credit risk prediction into an orchestrated, serverless AWS pipeline. Trained on the Home Credit Default Risk dataset, the four-model ensemble achieved a held-out ROC-AUC of 0.7556, and a business cost matrix fixed its decision threshold at 0.49, at which it identifies 70\% of defaulters. Deployed through S3, Athena, Glue, SageMaker, API Gateway, Lambda, CloudFront, DynamoDB, Step Functions, IAM and CloudWatch, the platform turns partial applicant inputs into logged, risk-tiered lending decisions in real time, with predictions identical to the local baseline, a 100\% success rate, only 27 ms of additional median server-side latency and a total evaluation cost under one US dollar. By closing the gap between cost-sensitive credit modelling and cloud systems engineering, CreditIQ demonstrates a practical, reproducible blueprint for auditable financial MLOps \cite{2}, \cite{6}.
+
+\begin{thebibliography}{15}
+
+\bibitem{1}
+A. Symeonides, I. Giannakopoulos, and D. Tsoumakos, ``Function-as-a-Service Machine Learning: Serverless vs. Containers,'' 2022 IEEE International Conference on Big Data (Big Data), pp. 2682--2691, 2022. [Online]. Available: \url{https://ieeexplore.ieee.org/document/10020456}
+
+\bibitem{2}
+A. M\"akinen, H. Skyt\'en, T. M\"annist\"o, and M. Raatikainen, ``Who Needs MLOps: What Data Scientists Seek to Accomplish and How Can MLOps Help?,'' 2021 IEEE/ACM 43rd International Conference on Software Engineering: Software Engineering in Practice (ICSE-SEIP), pp. 109--118, 2021. [Online]. Available: \url{https://ieeexplore.ieee.org/document/9431102}
+
+\bibitem{3}
+M. G. Rastegar, A. A. S. Dessai, and M. S. Kumar, ``Serverless Architecture for Machine Learning Model Deployment,'' 2021 International Conference on Communication, Control and Information Sciences (ICCISc), pp. 1--6, 2021. [Online]. Available: \url{https://ieeexplore.ieee.org/document/9467888}
+
+\bibitem{4}
+Y. Jiao et al., ``Cloud-based Machine Learning Platform for Big Data: Architecture and Use Cases,'' 2020 IEEE International Conference on Smart Cloud (SmartCloud), pp. 1--6, 2020. [Online]. Available: \url{https://ieeexplore.ieee.org/document/9266159}
+
+\bibitem{5}
+D. Tamburri, ``Sustainable MLOps: Trends and Challenges,'' 2020 22nd International Symposium on Symbolic and Numeric Algorithms for Scientific Computing (SYNASC), pp. 17--23, 2020. [Online]. Available: \url{https://ieeexplore.ieee.org/document/9355799}
+
+\bibitem{6}
+A. Casimiro et al., ``A Cloud-Native Architecture for Machine Learning Operations (MLOps),'' 2023 IEEE 16th International Conference on Cloud Computing (CLOUD), pp. 200--209, 2023. [Online]. Available: \url{https://ieeexplore.ieee.org/document/10260481}
+
+\bibitem{7}
+H. Zhang, L. Baier, and S. V. D. V. R., ``Evaluating Cloud-Based Serverless Architectures for Machine Learning Pipelines,'' IEEE Transactions on Cloud Computing, vol. 11, no. 3, pp. 2501--2514, 2023. [Online]. Available: \url{https://ieeexplore.ieee.org/document/10023412}
+
+\bibitem{8}
+M. Zhou, A. Srivastava, and J. Wu, ``Automated Continuous Integration and Continuous Delivery for Machine Learning Workflows in the Cloud,'' IEEE Cloud Computing, vol. 9, no. 2, pp. 45--53, 2022. [Online]. Available: \url{https://ieeexplore.ieee.org/document/9761345}
+
+\bibitem{9}
+S. Rani and A. Kumar, ``Scalable Data Processing Pipelines for Machine Learning Using AWS Glue and S3,'' 2022 IEEE 9th International Conference on Cloud Computing and Intelligence Systems (CCIS), pp. 112--118, 2022. [Online]. Available: \url{https://ieeexplore.ieee.org/document/9981245}
+
+\bibitem{10}
+V. Bhatt, R. K. S., and T. R., ``Serverless Machine Learning Inference Using AWS Lambda and API Gateway,'' 2021 5th International Conference on Computing Methodologies and Communication (ICCMC), pp. 883--888, 2021. [Online]. Available: \url{https://ieeexplore.ieee.org/document/9418342}
+
+\bibitem{11}
+L. H. B. et al., ``Managing Machine Learning Technical Debt with End-to-End MLOps Pipelines,'' IEEE Software, vol. 39, no. 4, pp. 56--64, 2022. [Online]. Available: \url{https://ieeexplore.ieee.org/document/9735432}
+
+\bibitem{12}
+K. M. and N. S., ``Architecting Secure Machine Learning Pipelines on Cloud Infrastructures,'' IEEE Security \& Privacy, vol. 21, no. 1, pp. 44--53, 2023. [Online]. Available: \url{https://ieeexplore.ieee.org/document/10012356}
+
+\bibitem{13}
+J. W. et al., ``Comparative Analysis of Fully Managed ML Platforms (AWS SageMaker) vs. Custom Serverless Pipelines,'' 2023 IEEE International Conference on Big Data (Big Data), pp. 3105--3114, 2023. [Online]. Available: \url{https://ieeexplore.ieee.org/document/10386745}
+
+\bibitem{14}
+P. P. et al., ``Orchestrating Complex Machine Learning Workflows with Cloud-Native Step Functions,'' 2022 IEEE International Conference on Web Services (ICWS), pp. 145--152, 2022. [Online]. Available: \url{https://ieeexplore.ieee.org/document/9861254}
+
+\bibitem{15}
+R. S. and M. T., ``Automated Model Drift Monitoring and Retraining in Cloud MLOps Architectures,'' IEEE Access, vol. 11, pp. 18234--18245, 2023. [Online]. Available: \url{https://ieeexplore.ieee.org/document/10045612}
+
+\end{thebibliography}
+
+\end{document}

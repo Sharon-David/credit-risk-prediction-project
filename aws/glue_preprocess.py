@@ -1,6 +1,6 @@
 # Glue Python Shell job (demo only): light cleaning of the raw CSV, writes processed/application_clean.csv.
 # The hosted model + preprocessor are the existing ones from this repo; this job does not feed them.
-BUCKET = "credit-risk-yourname"   # <-- CHANGE THIS to your bucket name
+BUCKET = "credit-risk-data-aranck"   # <-- CHANGE THIS to your bucket name
 
 import io
 import boto3

@@ -1,0 +1,27 @@
+flowchart TB
+    subgraph GOV["Cloud Governance: Access Control (AWS IAM) · Orchestration (AWS Step Functions)"]
+        direction TB
+
+        A["<b>1. Data Ingestion</b><br/>Cloud object storage / data lake<br/><i>Amazon S3</i>"]
+        B["<b>2. Data Exploration</b><br/>Serverless SQL on stored data<br/><i>Amazon Athena</i>"]
+        C["<b>3. Data Preparation & Feature Engineering</b><br/>Serverless ETL jobs<br/><i>AWS Glue</i>"]
+        D["<b>4. Model Training & Evaluation</b><br/>ML compute, cost-optimised threshold<br/><i>Stacked ensemble → model artifacts</i>"]
+        E["<b>5. Model Registry & Packaging</b><br/>Versioned artifacts + container image<br/><i>Amazon S3 · Amazon ECR</i>"]
+        F["<b>6. Deployment & Serving</b><br/>Serverless inference endpoint<br/><i>Amazon SageMaker</i>"]
+        G["<b>7. API & Content Delivery</b><br/>Managed API, functions and CDN<br/><i>API Gateway · Lambda · CloudFront</i>"]
+        H["<b>8. Monitoring & Audit</b><br/>Logs, metrics, alarms, decision records<br/><i>Amazon CloudWatch · DynamoDB</i>"]
+
+        A --> B --> C --> D --> E --> F --> G --> H
+        H -. "Drift detected → retrain" .-> C
+        H -. "New data" .-> A
+    end
+
+    classDef data fill:#E3F2FD,stroke:#1565C0,color:#0D47A1;
+    classDef model fill:#EDE7F6,stroke:#5E35B1,color:#311B92;
+    classDef serve fill:#E8F5E9,stroke:#2E7D32,color:#1B5E20;
+    classDef ops fill:#FFF3E0,stroke:#EF6C00,color:#E65100;
+
+    class A,B,C data;
+    class D,E model;
+    class F,G serve;
+    class H ops;
