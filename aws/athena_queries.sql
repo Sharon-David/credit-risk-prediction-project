@@ -13,7 +13,7 @@ CREATE EXTERNAL TABLE IF NOT EXISTS credit_risk.application_train (
   days_employed string
 )
 ROW FORMAT SERDE 'org.apache.hadoop.hive.serde2.OpenCSVSerde'
-LOCATION 's3://<BUCKET>/raw/'
+LOCATION 's3://credit-risk-web-aranck/raw/'
 TBLPROPERTIES ('skip.header.line.count'='1');
 
 -- 1. Row count
