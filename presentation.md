@@ -1,378 +1,338 @@
-# CreditIQ: Presentation & Codebase Walkthrough Guide
-**A Cloud-Based MLOps Platform for Cost-Sensitive Credit Risk Prediction**  
-*Academic Project Presentation Guide & 4-Person Role Division*
+# CreditIQ: Cloud Computing Presentation & Architecture Walkthrough
+**An Enterprise Cloud-Native MLOps & Serverless Decision Platform on AWS**  
+*Cloud Computing Course Final Presentation & 4-Person Role Division Guide*
 
 ---
 
-## 1. Executive Summary & Team Distribution Matrix
+## 1. Executive Summary & Cloud Team Distribution Matrix
 
-This master document divides the entire **CreditIQ** project—including the IEEE conference research paper ([`reference.tex`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/reference.tex)) and the complete production codebase—across **four presenters (Person A, Person B, Person C, and Person D)**.
+This master document divides the cloud computing infrastructure, serverless architecture, and codebase of **CreditIQ**—as documented in the IEEE research paper ([`reference.tex`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/reference.tex)) and the GitHub repository—across **four presenters (Person A, Person B, Person C, and Person D)**.
 
-Each presenter is assigned a self-contained, end-to-end domain with dedicated paper subtopics, specific codebase walkthrough responsibilities, slide-by-slide scripts, visual artifacts, and defense/viva Q&A preparation.
+**Core Directive**: This presentation is **100% focused on Cloud Computing, Serverless Architecture, Cloud Security, Distributed Systems, and FinOps**. All heavy machine learning modeling details (such as model weights, ROC comparisons, and base learner algorithms) are treated as a pre-packaged application workload (`model.tar.gz`) hosted and served on AWS.
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│                                          CREDITIQ PROJECT ARCHITECTURE                                           │
+│                                    CREDITIQ AWS CLOUD COMPUTING ARCHITECTURE                                     │
 └──────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 
-   [ PERSON A: DATA & PIPELINE ]              [ PERSON B: ML & COST OPTIMIZATION ]
-   • Section I & II-A, II-B, II-C, II-F        • Section I (Math), II-D, II-E, IV-A, V-A
-   • Data Lake & Preprocessing                 • Stacking Classifier & Cost Sensitivity
-   • S3, Athena, Glue, Step Functions          • Notebooks 01-06, Cost Matrix, ROC-AUC
-                  │                                           │
-                  ▼                                           ▼
-   ┌──────────────────────────────┐            ┌──────────────────────────────┐
-   │ Offline Pipeline & Storage   │            │ 5-Model Ensemble & Threshold │
-   │ S3 Data Lake + Athena + Glue │            │ Stacking (0.7556) + τ*=0.49  │
-   └──────────────┬───────────────┘            └──────────────┬───────────────┘
-                  │                                           │
-                  └─────────────────────┬─────────────────────┘
-                                        │ Packaged as model.tar.gz
+   [ PERSON A: STORAGE & ANALYTICS ]            [ PERSON B: SERVERLESS ETL & ORCHESTRATION ]
+   • Amazon S3 Data Lake (raw/, processed/)     • AWS Glue (Serverless Python Shell ETL)
+   • Amazon Athena (Serverless SQL Analytics)   • AWS Step Functions (State Machine Orchestrator)
+   • Schema-on-Read (OpenCSVSerde)              • Amazon States Language (.sync Integration)
+   • S3 Storage Classes & Zero-Server EDA       • DPU Economics & Fault-Tolerant Retries
+                  │                                            │
+                  ▼                                            ▼
+   ┌──────────────────────────────┐             ┌──────────────────────────────┐
+   │ Amazon S3 Storage Prefixes   │             │ AWS Glue ETL Job             │
+   │ raw/  processed/  athena/    │             │ 1 min 52 s (DPU-minutes)     │
+   └──────────────┬───────────────┘             └──────────────┬───────────────┘
+                  │                                            │
+                  └─────────────────────┬──────────────────────┘
+                                        │ Packaged as model.tar.gz into S3
                                         ▼
    ┌──────────────────────────────────────────────────────────────────────────┐
-   │                   [ PERSON C: INFERENCE & CONTAINERIZATION ]             │
-   │                   • Section II-D, III-A, IV-B, IV-C, V-B                 │
-   │                   • SageMaker Serverless Endpoint (4096 MB)              │
-   │                   • Custom Docker Container (ECR) + predict_single.py    │
-   │                   • AWS Lambda (Boto3 Orchestrator)                      │
+   │            [ PERSON C: CLOUD CONTAINERIZATION & SERVERLESS HOSTING ]     │
+   │            • Amazon Elastic Container Registry (ECR) Private Repo         │
+   │            • Custom Docker Image (Python 3.13-slim + OpenMP libgomp1)     │
+   │            • Amazon SageMaker Serverless Inference Endpoint (3072 MB RAM) │
+   │            • Scale-to-Zero Compute Economics & Cold-Start Analysis (9.8s) │
    └────────────────────────────────────┬─────────────────────────────────────┘
                                         │
                                         ▼
    ┌──────────────────────────────────────────────────────────────────────────┐
-   │                   [ PERSON D: DELIVERY, AUDIT & CLOUD ECONOMICS ]        │
-   │                   • Section II-E, II-F, III-B, III-C, IV-D, V-C, VI, VII │
-   │                   • CloudFront CDN (OAC) + S3 Demo UI (HTML/CSS/JS)      │
-   │                   • API Gateway HTTP API + DynamoDB Audit Store          │
-   │                   • IAM Least Privilege + CloudWatch + $0.47 Cost Model  │
+   │            [ PERSON D: API ROUTING, FAAS, AUDIT, CDN & FINOPS ]          │
+   │            • Amazon API Gateway (HTTP API $default Route GET /predict)    │
+   │            • AWS Lambda (Event-Driven FaaS Boto3 Orchestrator)            │
+   │            • Amazon DynamoDB (NoSQL Single-Table Audit Store, 6 ms write) │
+   │            • Amazon CloudFront CDN (Origin Access Control SigV4 Security) │
+   │            • AWS IAM (Least Privilege Trust Policies) + Amazon CloudWatch │
+   │            • FinOps Analysis: $0.47 Total Evaluation Cost & Free Tier     │
    └──────────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Team Master Allocation Matrix
 
-| Presenter | Primary Focus Area | Assigned Paper Sections ([`reference.tex`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/reference.tex)) | Assigned Codebase Files | Core Technologies / Metrics |
+| Presenter | Cloud Domain | Assigned Paper Sections ([`reference.tex`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/reference.tex)) | Assigned Codebase Files | AWS Services Owned & Key Cloud Metrics |
 | :--- | :--- | :--- | :--- | :--- |
-| **Person A** *(Data Engineering & Orchestration)* | Data Lake, Serverless ETL, Schema Engineering & Automated State Machine | **Sec I** (Intro, MLOps Lifecycle), **Sec I-A/B** (Literature & Gap), **Sec II-A** (Problem & Dataset), **Sec II-B** (Layer 1: S3/Athena), **Sec II-C** (Layer 2: Glue Preprocessing), **Sec II-F** (Step Functions), **Sec III-A/B** (S3, Athena, Glue, Step Functions) | [`aws/athena_queries.sql`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/aws/athena_queries.sql)<br>[`aws/glue_preprocess.py`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/aws/glue_preprocess.py)<br>[`aws/step_functions.json`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/aws/step_functions.json)<br>[`notebooks/01_data_exploration.ipynb`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/notebooks/01_data_exploration.ipynb)<br>[`notebooks/02_preprocessing.ipynb`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/notebooks/02_preprocessing.ipynb) | S3, Athena, Glue, Step Functions, OpenCSVSerde, Pandas, NumPy<br>**307k rows, 9 ratios, 192 features** |
-| **Person B** *(ML Modeling & Cost Decisioning)* | Cost-Sensitive Machine Learning, Stacking Ensembles & Business Decision Matrix | **Sec I** (Asymmetric Error Theory), **Sec I-A** (Literature on Stacking/Costs), **Sec II-D** (Layer 3: Model Stacking & Cost Optimization), **Eq. (2)** ($\tau^*$ derivation), **Sec II-E** (Tiered Decisioning Table I), **Sec IV-A** (Model Performance Table III, Confusion Matrix Table IV), **Sec V-A** (Cost Sensitivity vs Accuracy) | [`notebooks/03_base_models.ipynb`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/notebooks/03_base_models.ipynb)<br>[`notebooks/04_stacking.ipynb`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/notebooks/04_stacking.ipynb)<br>[`notebooks/05_threshold_optimization.ipynb`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/notebooks/05_threshold_optimization.ipynb)<br>[`notebooks/06_evaluation.ipynb`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/notebooks/06_evaluation.ipynb)<br>[`notebooks/optimal_threshold.txt`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/notebooks/optimal_threshold.txt)<br>[`models/feature_columns.json`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/models/feature_columns.json) | Scikit-learn, XGBoost, LightGBM, Joblib, StackingClassifier<br>**ROC-AUC 0.7556, $\tau^* = 0.49$, 70% Default Recall** |
-| **Person C** *(Cloud Serving & Containerization)* | Docker Containerization, Serverless Model Serving & Inference Backend | **Sec II-D** (Layer 4: SageMaker Serverless & Custom ECR), **Sec II-D** (Feature Reconstruction on the fly), **Sec III-A** (Docker, Flask, Boto3, ECR, SageMaker, Lambda), **Sec IV-B** (Functional Validation & Parity), **Sec IV-C** (Latency Breakdown Tables V & VI), **Sec V-B** (Serverless Trade-Offs & Cold Starts) | [`predict_single.py`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/predict_single.py)<br>[`aws/sagemaker/Dockerfile`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/aws/sagemaker/Dockerfile)<br>[`aws/sagemaker/serve.py`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/aws/sagemaker/serve.py)<br>[`aws/deploy_sagemaker.py`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/aws/deploy_sagemaker.py)<br>[`aws/lambda_handler.py`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/aws/lambda_handler.py)<br>[`predict_api.py`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/predict_api.py) | Docker, Amazon ECR, SageMaker Serverless (4096 MB), AWS Lambda, Flask, Gunicorn<br>**73 ms Server-Side Latency, 0.0 Numerical Drift** |
-| **Person D** *(Delivery, Governance & Economics)* | Global Edge CDN, API Routing, Compliance Auditing, Security & FinOps | **Sec II-E** (API Gateway HTTP API, DynamoDB Audit Store), **Sec II-F** (Layer 5: IAM Least Privilege & CloudWatch Monitoring), **Sec III-B** (CloudFront, API Gateway, DynamoDB, IAM, CloudWatch, UI), **Sec III-C** (Cost Analysis Table II), **Sec IV-D** (Operational Comparison Table VII), **Sec V-C, VI, VII** (Benefits, Limitations, Future Scope, Conclusion) | [`aws/setup_cloudfront.py`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/aws/setup_cloudfront.py)<br>[`aws/setup_apigw.py`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/aws/setup_apigw.py)<br>[`credit-risk-demo.html`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/credit-risk-demo.html)<br>[`aws/iam_trust_policy.json`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/aws/iam_trust_policy.json)<br>DynamoDB Schema & CloudWatch Logs/Alarms | CloudFront (OAC SigV4), API Gateway HTTP API, DynamoDB Single-Table, IAM, CloudWatch<br>**$0.47 Total Evaluation Cost, 100% Uptime, Zero-Leak Audit** |
+| **Person A** | **Storage & Serverless Analytics** | **Sec I** (Cloud MLOps Lifecycle Fig. 1), **Sec I-A/B** (Literature & Cloud Systems Gap), **Sec II-A** (160 MB Data Ingestion), **Sec II-B** (Layer 1: S3 & Athena), **Sec III-B** (Amazon S3, Amazon Athena), **Sec IV-B** (Table VI: Athena Query Benchmarks), **Sec III-C** (S3 & Athena Cost) | [`aws/athena_queries.sql`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/aws/athena_queries.sql)<br>S3 Data Lake Architecture (`s3://credit-risk-data-aranck/`) | **Amazon S3, Amazon Athena**<br>• 11 nines durability<br>• Zero compute provisioning<br>• 158.4 MB scanned in 1.9s ($0.01 cost) |
+| **Person B** | **Serverless ETL & Workflow Automation** | **Sec II-C** (Layer 2: Preprocessing in Glue), **Sec II-F** (Layer 5: Orchestration via Step Functions), **Sec III-B** (AWS Glue, AWS Step Functions), **Sec IV-B** (Table VI: Glue & Step Functions Pipeline Timings), **Sec III-C** (Glue & Step Functions Cost), **Sec V-C** (Automated Retries & Silent Failure Elimination) | [`aws/glue_preprocess.py`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/aws/glue_preprocess.py)<br>[`aws/step_functions.json`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/aws/step_functions.json) | **AWS Glue, AWS Step Functions**<br>• DPU-minute serverless compute<br>• 1 min 52 s ETL duration<br>• Synchronous state machine (`startJobRun.sync`) |
+| **Person C** | **Cloud Containerization & Model Hosting** | **Sec II-D** (Layer 4: SageMaker Serverless Hosting & ECR), **Sec II-D** (SageMaker `/ping` and `/invocations` Contract), **Sec III-A/B** (Docker, Amazon ECR, Amazon SageMaker Serverless), **Sec IV-B** (Table VI: Endpoint Creation 4m 18s), **Sec IV-C** (Table V & VI: Compute Latency 41 ms), **Sec V-B** (Serverless Trade-Offs & Cold Start Analysis) | [`aws/sagemaker/Dockerfile`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/aws/sagemaker/Dockerfile)<br>[`aws/sagemaker/serve.py`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/aws/sagemaker/serve.py)<br>[`aws/deploy_sagemaker.py`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/aws/deploy_sagemaker.py)<br>[`predict_single.py`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/predict_single.py) | **Amazon ECR, Amazon SageMaker Serverless**<br>• Custom Linux container (Python 3.13-slim)<br>• 3072 MB RAM, Max Concurrency = 2<br>• Scale-to-zero compute ($0 idle cost)<br>• 9.8s cold start vs 41 ms warm compute |
+| **Person D** | **API Routing, FaaS, Audit, CDN & FinOps** | **Sec II-E** (Layer 4: API Routing & DynamoDB Auditing), **Sec II-F** (Layer 5: IAM Least Privilege & CloudWatch), **Sec III-B** (CloudFront OAC, API Gateway, DynamoDB, IAM, CloudWatch), **Sec III-C** (Table II: $0.47 FinOps Cost Model), **Sec IV-C** (Latency Breakdown Table V & VI), **Sec IV-D** (Operational Comparison Table VII), **Sec V-C, VI, VII** (Edge Latency, Governance, Future Scope) | [`aws/setup_apigw.py`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/aws/setup_apigw.py)<br>[`aws/setup_cloudfront.py`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/aws/setup_cloudfront.py)<br>[`aws/lambda_handler.py`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/aws/lambda_handler.py)<br>[`aws/iam_trust_policy.json`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/aws/iam_trust_policy.json)<br>[`credit-risk-demo.html`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/credit-risk-demo.html) | **API Gateway, Lambda, DynamoDB, CloudFront, IAM, CloudWatch**<br>• Global Edge Distribution (OAC SigV4)<br>• 73 ms total server-side latency<br>• Single-table NoSQL audit persistence<br>• Total evaluation cost: **$0.47 USD** |
 
 ---
 
-## 2. Master Presentation Agenda & Timing (20-Minute Total Defense)
+## 2. Master Presentation Agenda & Timing (20 Minutes Total)
 
 ```
-[00:00 - 05:00]  Person A: Motivation, Data Lake Architecture & Automated Preprocessing
-[05:00 - 10:00]  Person B: Machine Learning Modeling, Stacking Ensembles & Cost-Optimal Thresholding
-[10:00 - 15:00]  Person C: Custom Containerization, Serverless SageMaker & Low-Latency Lambda Serving
-[15:00 - 20:00]  Person D: Global CloudFront Edge, DynamoDB Audit Compliance, Cloud Economics & Live Demo
-[20:00 - 25:00]  Panel Q&A and Professor Committee Defense (All Presenters)
+[00:00 - 05:00]  Person A: Cloud Motivation, Data Lake Architecture & Serverless SQL Analytics
+[05:00 - 10:00]  Person B: Serverless ETL, Distributed Data Processing & Workflow State Machines
+[10:00 - 15:00]  Person C: Cloud Containerization, Amazon ECR & SageMaker Serverless Infrastructure
+[15:00 - 20:00]  Person D: Event-Driven FaaS, NoSQL Auditing, Global Edge CDN, FinOps & Live Demo
+[20:00 - 25:00]  Committee Q&A & Technical Cloud Defense (All Presenters)
 ```
 
 ---
 
-## 3. Person A: Data Engineering, Data Lake Architecture & Workflow Orchestration
+## 3. Person A: Storage Architecture, Serverless Data Lake & Interactive Analytics
 
-### 3.1 Role & Ownership Overview
-* **Presenter Role**: Data Lake Architect & Pipeline Engineer
-* **Mission**: Explain why traditional credit scoring pipelines fail in production, formulate the data challenge, demonstrate how serverless data lake querying works on Amazon S3 with Amazon Athena, walk through distributed automated cleaning in AWS Glue, and show pipeline orchestration with AWS Step Functions.
+### 3.1 Role & Cloud Mission
+* **Presenter Role**: Cloud Storage Architect & Data Lake Engineer
+* **Mission**: Explain the foundational role of cloud computing in financial MLOps, detail the serverless Data Lake architecture on Amazon S3, explain object storage design (keys, prefixes, durability), and demonstrate how Amazon Athena executes interactive, schema-on-read SQL analytics with zero provisioned compute clusters.
 
 ### 3.2 Assigned Paper Sections ([`reference.tex`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/reference.tex))
-* **Section I: INTRODUCTION (Lines 92–108)**
-  * Context: Consumer lending demands sub-second decisions with full regulatory auditability.
-  * Modeling challenges: Severe class sparsity (~8.07% default rate across 307,511 applicants) and asymmetric error costs.
-  * Operational challenges: Siloed data science tooling, technical debt in ML systems, high idle compute costs of monolithic servers.
-  * The Cloud MLOps Lifecycle: Fig. 1 ([`flowchart.png`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/system%20architecture.png)) showing stages from Ingestion $\rightarrow$ Processing $\rightarrow$ Training $\rightarrow$ Packaging $\rightarrow$ Serving $\rightarrow$ Monitoring.
-* **Section I-A & I-B: Literature Review & Research Gap (Lines 109–120)**
-  * Citations: Rani & Kumar (2022) on distributed ETL via AWS Glue and S3; Casimiro et al. (2023) on separating ingestion from execution; P.P. et al. (2022) on Step Functions workflow management.
-  * Research Gap: Existing literature optimizes either the offline cost matrix in notebooks OR cloud serving in isolation. CreditIQ bridges offline cost-sensitive stacking directly with live, serverless AWS infrastructure.
-* **Section II-A: Problem Formulation and Dataset (Lines 131–133)**
-  * Home Credit Default Risk dataset (`application_train.csv`): 160 MB, 307,511 rows, 122 columns.
-  * Imbalance breakdown: 282,686 non-defaulters (91.9%) vs 24,825 defaulters (8.1%).
-  * Stratified 40% sample: 123,004 records used for balanced compute training while preserving target distributions.
+* **Section I: INTRODUCTION & CLOUD MLOPS LIFECYCLE (Lines 92–108)**
+  * The cloud computing paradigm shift in enterprise finance: moving from monolithic always-on servers to decoupled, managed cloud services.
+  * Problems with traditional servers: idle capacity during quiet hours wastes money, while sudden spikes cause hardware bottlenecks.
+  * The Cloud MLOps Lifecycle: Fig. 1 ([`flowchart.png`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/system%20architecture.png)) showing managed cloud services mapped onto each phase: Storage (S3) $\rightarrow$ Ingestion & Querying (Athena) $\rightarrow$ ETL (Glue) $\rightarrow$ Orchestration (Step Functions) $\rightarrow$ Container Registry (ECR) $\rightarrow$ Serverless Compute (SageMaker + Lambda) $\rightarrow$ Gateway (API Gateway) $\rightarrow$ Edge CDN (CloudFront) $\rightarrow$ Audit Store (DynamoDB) $\rightarrow$ Observability (CloudWatch).
+* **Section I-A & I-B: Literature Review & Cloud Systems Engineering Gap (Lines 109–120)**
+  * Citations: Casimiro et al. (2023) on separating data ingestion from model execution in cloud-native platforms; Jiao et al. (2020) on reference architectures for cloud big data.
+  * Cloud Engineering Gap: Most data science implementations rely on local, unmanaged notebooks. CreditIQ bridges the gap by implementing an enterprise, multi-service AWS architecture that scales elastically and requires zero manual infrastructure maintenance.
+* **Section II-A: Data Lake Ingestion (Lines 131–133)**
+  * Centralized cloud ingestion: 160 MB raw tabular dataset (`application_train.csv`) containing 307,511 applicant records and 122 attributes stored in an S3 Data Lake.
 * **Section II-B: Layer 1: Data Lake and Exploratory Querying (Lines 134–136)**
-  * S3 prefix architecture: `raw/`, `processed/`, `athena-results/`, `models/`.
-  * Amazon Athena: Serverless schema-on-read querying using `OpenCSVSerde`.
-* **Section II-C: Layer 2: Preprocessing and Feature Engineering (Lines 137–143)**
-  * Scrubbing the `365243` sentinel value in `DAYS_EMPLOYED`.
-  * Dropping sparse columns (>45% missing values).
-  * Synthesizing the 9 domain-specific financial ratios and stability features.
-  * Scikit-learn `ColumnTransformer`: Median imputation, standard scaling, and one-hot encoding yielding a 192-dimensional design matrix.
-* **Section II-F: Layer 5: Orchestration (AWS Step Functions) (Lines 182–184)**
-  * AWS Step Functions state machine with synchronous `startJobRun.sync` and error-catch states.
+  * Partitioned S3 prefix structure:
+    * `s3://credit-risk-data-aranck/raw/`: Original immutable CSV records.
+    * `s3://credit-risk-data-aranck/processed/`: Transformed datasets output by ETL jobs.
+    * `s3://credit-risk-data-aranck/athena-results/`: Execution logs and query output buffers.
+    * `s3://credit-risk-data-aranck/models/`: Serialized model artifacts (`model.tar.gz`).
+  * Amazon Athena: Serverless query engine using Presto distributed SQL under the hood.
+  * External table mapping using Apache Hive `OpenCSVSerde` serializer/deserializer.
+* **Section III-B: AWS Service Breakdown: Amazon S3 & Amazon Athena (Lines 202–205)**
+  * Amazon S3: Designed for 11 nines ($99.999999999\%$) durability, virtually infinite scalability, and direct integration with all AWS compute services without network bottlenecks.
+  * Amazon Athena: Schema-on-read execution; charges $5.00 per terabyte scanned; zero idle spend; no cluster provisioning or shutdown steps.
+* **Section IV-B: Table VI Pipeline Execution Summary (Lines 301–318)**
+  * Athena row count query: completed in **1.9 seconds**, scanning 158.4 MB.
+  * Athena class distribution query: completed in **2.3 seconds**.
+* **Section III-C: Cost Analysis (Table II) (Lines 224–248)**
+  * S3 storage cost: **$0.01 USD**.
+  * Athena interactive query cost: **$0.01 USD**.
 
 ### 3.3 Codebase Walkthrough & File Splits
-Person A must open and explain the following repository files:
+Person A must open and explain the following repository file:
 
-#### 1. [`aws/athena_queries.sql`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/aws/athena_queries.sql)
-* **Lines 1–18**: Explain the external table DDL:
+#### [`aws/athena_queries.sql`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/aws/athena_queries.sql)
+* **Lines 1–18: DDL External Table Definition**:
   ```sql
+  CREATE DATABASE IF NOT EXISTS credit_risk;
+
   CREATE EXTERNAL TABLE IF NOT EXISTS credit_risk.application_train (
-    sk_id_curr string, target string, name_contract_type string, ...
+    sk_id_curr string, target string, name_contract_type string, code_gender string,
+    flag_own_car string, flag_own_realty string, cnt_children string, amt_income_total string,
+    amt_credit string, amt_annuity string, amt_goods_price string, name_type_suite string,
+    name_income_type string, name_education_type string, name_family_status string,
+    name_housing_type string, region_population_relative string, days_birth string,
+    days_employed string
   )
   ROW FORMAT SERDE 'org.apache.hadoop.hive.serde2.OpenCSVSerde'
   LOCATION 's3://credit-risk-data-aranck/raw/'
   TBLPROPERTIES ('skip.header.line.count'='1');
   ```
-  *Key Concept*: Why `OpenCSVSerde`? It maps raw CSV text to table columns purely by position without spinning up any database instance or modifying raw source data.
-* **Lines 19–37**: Explain the 4 serverless analytical queries:
-  1. `COUNT(*)` verifying 307,511 rows.
-  2. `GROUP BY target` validating 91.9% vs 8.1% class imbalance.
-  3. Missing value count across annuity and goods price without memory overhead.
-  4. Sentinel inspection finding thousands of occurrences of `365243` in `DAYS_EMPLOYED` (representing retired/unemployed individuals recorded as 1,000 years employed).
+  *Cloud Walkthrough Points*:
+  1. Explain **External Table** semantics: Athena does not own the data or copy it into a proprietary database storage engine. S3 remains the authoritative source of truth. If the table is dropped, raw S3 files remain completely untouched.
+  2. Explain **OpenCSVSerde**: The serializer/deserializer treats raw CSV lines as structured positional fields on the fly. No data ingestion pipelines or staging relational tables are required.
+  3. Explain **S3 Location**: Athena mounts the S3 bucket URI directly. S3 transparently handles distributed parallel chunk reading across AWS internal networks.
+* **Lines 19–37: Serverless Analytical Queries**:
+  ```sql
+  -- 1. Row count verification (307,511 rows)
+  SELECT COUNT(*) AS n_rows FROM credit_risk.application_train;
 
-#### 2. [`aws/glue_preprocess.py`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/aws/glue_preprocess.py)
-* **Lines 1–24**: Walk through the serverless Glue Python Shell job:
-  ```python
-  df["DAYS_EMPLOYED"] = df["DAYS_EMPLOYED"].replace(365243, np.nan)
-  df["CREDIT_INCOME_RATIO"]  = df["AMT_CREDIT"] / df["AMT_INCOME_TOTAL"]
-  df["ANNUITY_INCOME_RATIO"] = df["AMT_ANNUITY"] / df["AMT_INCOME_TOTAL"]
-  df = df.drop(columns=df.columns[df.isnull().mean() > 0.45])
+  -- 2. Class imbalance distribution
+  SELECT target, COUNT(*) AS n FROM credit_risk.application_train GROUP BY target;
+
+  -- 3. Serverless missing value aggregation
+  SELECT
+    SUM(CASE WHEN amt_annuity = '' THEN 1 ELSE 0 END)     AS missing_annuity,
+    SUM(CASE WHEN amt_goods_price = '' THEN 1 ELSE 0 END) AS missing_goods_price
+  FROM credit_risk.application_train;
+
+  -- 4. Anomaly and sentinel detection without data transfer
+  SELECT target,
+    AVG(CAST(amt_income_total AS double)) AS avg_income,
+    SUM(CASE WHEN days_employed = '365243' THEN 1 ELSE 0 END) AS sentinel_days_employed
+  FROM credit_risk.application_train GROUP BY target;
   ```
-  *Key Concept*: Explain why Glue Python Shell was chosen over full PySpark—for a 160 MB dataset, PySpark cluster allocation overhead (several minutes) is wasteful; Python Shell provisions in seconds and costs pennies on DPU-minute billing.
-
-#### 3. [`aws/step_functions.json`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/aws/step_functions.json)
-* **Lines 1–29**: Walk through the Amazon States Language state machine:
-  ```json
-  "GluePreprocess": {
-    "Type": "Task",
-    "Resource": "arn:aws:states:::glue:startJobRun.sync",
-    "Parameters": { "JobName": "credit-risk-preprocess" },
-    "Catch": [{ "ErrorEquals": ["States.ALL"], "Next": "PipelineFailed" }],
-    "Next": "Done"
-  }
-  ```
-  *Key Concept*: Emphasize `.sync` integration—Step Functions pauses execution until the Glue ETL job signals success or failure, preventing silent data corruption in downstream models.
-
-#### 4. [`notebooks/01_data_exploration.ipynb`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/notebooks/01_data_exploration.ipynb) & [`notebooks/02_preprocessing.ipynb`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/notebooks/02_preprocessing.ipynb)
-* Show how exploratory findings in Notebook 01 were industrialized into Notebook 02:
-  * Stratified 40% subsampling (123,004 rows).
-  * Derivation of the **9 engineered domain features**:
-    $$\text{CREDIT\_INCOME\_RATIO} = \frac{\text{AMT\_CREDIT}}{\text{AMT\_INCOME\_TOTAL}}, \quad \text{ANNUITY\_INCOME\_RATIO} = \frac{\text{AMT\_ANNUITY}}{\text{AMT\_INCOME\_TOTAL}}$$
-    $$\text{CREDIT\_DURATION\_RATIO} = \frac{\text{AMT\_CREDIT}}{\text{AMT\_ANNUITY}}, \quad \text{GOODS\_CREDIT\_RATIO} = \frac{\text{AMT\_GOODS\_PRICE}}{\text{AMT\_CREDIT}}$$
-    $$\text{EMPLOYED\_AGE\_RATIO} = \frac{\text{DAYS\_EMPLOYED}}{\text{DAYS\_BIRTH}}, \quad \text{INCOME\_PER\_PERSON} = \frac{\text{AMT\_INCOME\_TOTAL}}{\max(\text{CNT\_FAM\_MEMBERS}, 1)}$$
-    $$\text{AGE\_YEARS} = \frac{-\text{DAYS\_BIRTH}}{365}, \quad \text{YEARS\_EMPLOYED} = \frac{-\text{DAYS\_EMPLOYED}}{365}, \quad \text{DOC\_COUNT}$$
-  * `ColumnTransformer` with `SimpleImputer(strategy='median')` + `StandardScaler()` for 68 numeric columns, and `SimpleImputer(strategy='constant')` + `OneHotEncoder(handle_unknown='ignore')` for 12 categorical columns.
-  * Output: 192 encoded features saved as [`models/preprocessor.pkl`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/models/preprocessor.pkl) and [`models/feature_columns.json`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/models/feature_columns.json).
+  *Cloud Walkthrough Points*:
+  1. Contrast this with traditional architectures: To perform this analysis in a legacy stack, an engineer would have had to provision an Amazon EC2 instance or spin up an Amazon RDS PostgreSQL database, pay for provisioning time, wait for cluster bootup, and pay for 24/7 idle uptime.
+  2. With Athena, these 4 queries scanned 158.4 MB of raw data, completed in under 2.5 seconds each, and cost less than **$0.01 USD**.
 
 ### 3.4 Slide-by-Slide Speaking Script
-* **Slide 1: Title & The Credit Lending Problem**
-  > *"Good morning committee members. In retail banking, approving a loan is a high-stakes balance: approving someone who defaults causes catastrophic losses, while rejecting a creditworthy borrower loses revenue. In our project, CreditIQ, we tackle this with an enterprise-grade cloud MLOps platform on AWS. I will start by detailing our data lake architecture and automated preprocessing pipeline."*
-* **Slide 2: Dataset Realities & Severe Class Imbalance**
-  > *"We utilize the Kaggle Home Credit Default Risk benchmark: 307,511 applicants across 122 variables. As shown in our Athena queries, only 8.07% of borrowers default. If a naive model simply approves everyone, it achieves 91.9% accuracy but destroys bank balance sheets. Furthermore, raw data contains anomalies like `365243` days employed—which is a data-entry sentinel representing retired individuals that would severely skew gradient descent if treated as actual work history."*
-* **Slide 3: Serverless Data Lake on S3 & Athena**
-  > *"Rather than spinning up an expensive RDS or Redshift database, we engineered a serverless Data Lake using Amazon S3 partitioned into `raw/`, `processed/`, and `athena-results/`. With Amazon Athena, we ran schema-on-read SQL using Hive OpenCSVSerde directly on S3 CSV files. We scanned 158.4 MB of data in 1.9 seconds for a fraction of a cent without maintaining any infrastructure."*
-* **Slide 4: Feature Engineering & Preprocessing Transformation**
-  > *"In our Glue ETL job and scikit-learn preprocessing pipeline, we drop columns with more than 45% missing values, replace the 365243 sentinel with nulls, and compute 9 high-impact financial ratios including Debt-to-Income, Annuity-to-Income, and Career Stability. Our fitted ColumnTransformer applies median imputation, standard scaling, and one-hot encoding, expanding our cleaned tabular features into a 192-dimensional vector stored as `preprocessor.pkl`."*
-* **Slide 5: Automated Workflow Orchestration with Step Functions**
-  > *"To ensure repeatability and avoid silent pipeline failures, we orchestrated the data pipeline using AWS Step Functions. Written in Amazon States Language, our state machine synchronously triggers our AWS Glue Python Shell job, awaits execution confirmation, and routes to an explicit failure state if an anomaly occurs. Now, my teammate Person B will explain how these clean features feed into our machine learning models and cost-optimal decision matrix."*
+* **Slide 1: Cloud Architecture Overview & Paradigm Shift**
+  > *"Good morning committee members. In modern cloud computing, financial institutions cannot afford the architectural liabilities of monolithic, always-on servers. Traditional VM-based architectures waste thousands of dollars during idle hours and become single points of failure under peak traffic. In CreditIQ, we engineered a 100% serverless, cloud-native architecture on AWS. I will begin by presenting our foundational storage tier: our Amazon S3 Data Lake and Amazon Athena serverless analytics engine."*
+* **Slide 2: Decoupled Storage: The Amazon S3 Data Lake**
+  > *"Cloud-native design dictates the complete separation of storage from compute. As shown in our architecture diagram, Amazon S3 serves as our centralized, durable data lake. We structured our bucket into logically isolated prefixes: `raw/` for immutable applicant records, `processed/` for ETL transformed data, `athena-results/` for query buffers, and `models/` for versioned application artifacts. S3 provides 11 nines of durability, high-throughput parallel object retrieval, and zero server maintenance."*
+* **Slide 3: Serverless Interactive Analytics with Amazon Athena**
+  > *"To inspect our 160 MB dataset containing 307,511 rows without provisioning expensive relational database instances or Spark clusters, we utilized Amazon Athena. Athena is a serverless interactive query service that operates directly on S3. Using the Apache Hive OpenCSVSerde serializer, we defined a logical schema over our raw CSV files. This is schema-on-read: the data stays in S3, and compute is allocated ephemerally only for the duration of the query."*
+* **Slide 4: Query Execution Benchmarks & Cloud Efficiency**
+  > *"As documented in Table VI of our research paper, our Athena row count and distribution queries executed in 1.9 and 2.3 seconds respectively, scanning 158.4 MB. Athena charges strictly $5.00 per terabyte scanned. Because our query engine scales down to zero instantly upon execution, our entire exploratory analytical workload cost exactly $0.01 USD. No databases were left running, and no CPU cycles were wasted."*
+* **Slide 5: Storage-to-Compute Pipeline Handoff**
+  > *"By establishing S3 as our decoupled single source of truth, any downstream cloud service can consume the data asynchronously. Now, my teammate Person B will explain how our serverless ETL service, AWS Glue, processes this data and how AWS Step Functions orchestrates the entire workflow."*
 
 ### 3.5 Viva & Committee Defense Q&A
-1. **Q: Why use Amazon Athena instead of loading the data into Amazon RDS PostgreSQL?**  
-   *Answer*: RDS requires provisioning an always-on EC2 database instance that incurs 24/7 billing even when no queries are executed. Athena is 100% serverless, charges only $5.00 per terabyte scanned, operates directly on raw S3 files via schema-on-read, and costs less than $0.01 for our entire exploratory analysis.
-2. **Q: Why drop columns with >45% missing values instead of imputing all of them?**  
-   *Answer*: Imputing columns where over half the data is absent injects high synthetic variance and creates spurious correlations in tree-based models. Dropping columns with >45% missingness removed uninformative building mode indicators while preserving all critical financial, demographic, and credit bureau variables.
-3. **Q: Why was Step Functions chosen over an open-source tool like Apache Airflow?**  
-   *Answer*: Apache Airflow requires deploying a web server, scheduler, and worker cluster (e.g., Celery/Redis or Amazon MWAA at ~$300/month). AWS Step Functions is completely serverless, costs $0.025 per 1,000 state transitions, integrates natively with AWS SDK service APIs with `.sync` execution, and has zero idle cost.
+1. **Q: Why use Amazon Athena instead of provisioning an Amazon RDS MySQL or PostgreSQL database?**  
+   *Answer*: Amazon RDS requires provisioning dedicated virtual machines (EC2) and attached EBS block storage, which incur continuous 24/7 billing even when no queries are being executed. Furthermore, loading 307,000 rows into RDS requires building an ingestion pipeline and managing database connection pools. Athena is 100% serverless, requires zero instance management, queries raw files directly in S3 via schema-on-read, and costs strictly $5.00 per TB scanned, costing less than $0.01 for our entire workload.
+2. **Q: What is the architectural purpose of S3 prefixes (e.g., `raw/`, `processed/`)?**  
+   *Answer*: Amazon S3 is a flat object store; prefixes act as logical partitions that organize data without directory overhead. In enterprise cloud pipelines, prefix separation enforces strict security boundaries (e.g., IAM policies can restrict write access to `raw/` while granting write permissions to `processed/` for ETL roles) and enables granular S3 lifecycle rules to transition older query results in `athena-results/` to cheaper S3 Glacier storage automatically.
+3. **Q: How does Hive `OpenCSVSerde` handle data types in Athena?**  
+   *Answer*: `OpenCSVSerde` reads all incoming CSV fields as raw strings, preventing type-cast failures during initial file parsing. Explicit casting (e.g., `CAST(amt_income_total AS double)`) is performed dynamically at query runtime inside the SQL engine. This guarantees that malformed rows or corrupt characters do not break the entire table schema.
 
 ---
 
-## 4. Person B: Machine Learning Modeling, Stacking Ensembles & Cost-Sensitive Optimization
+## 4. Person B: Serverless ETL, Distributed Data Processing & Workflow Orchestration
 
-### 4.1 Role & Ownership Overview
-* **Presenter Role**: Lead Machine Learning Scientist & Decision Theorist
-* **Mission**: Detail the training of the 5 base classifiers, justify the mathematical architecture of the Stacking Ensemble, explain out-of-fold probability blending, formulate the business cost matrix, and prove why threshold tuning ($\tau^* = 0.49$) is mathematically and financially superior to arbitrary 0.5 classification.
+### 4.1 Role & Cloud Mission
+* **Presenter Role**: Cloud Automation & Workflow Orchestration Engineer
+* **Mission**: Detail the serverless ETL layer built on AWS Glue, justify the selection of Python Shell jobs over heavy Spark clusters, explain S3-to-S3 streaming data transformation, and demonstrate how AWS Step Functions orchestrates the cloud pipeline using the Amazon States Language with synchronous error handling and automatic retry policies.
 
 ### 4.2 Assigned Paper Sections ([`reference.tex`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/reference.tex))
-* **Section I: Asymmetric Error Cost in Credit Risk (Lines 95–96)**
-  * The fundamental flaw of standard machine learning in lending: Type I vs Type II errors are not equal.
-  * A False Approval (lending to a defaulting applicant) costs orders of magnitude more than a False Rejection (rejecting a creditworthy applicant).
-* **Section I-A: Literature Review on Ensembles & Thresholding (Lines 116–117)**
-  * Citations: Rofik et al. (2023) and Alamsyah et al. (2024) demonstrating stacked ensembles outperform isolated classifiers; Petrides et al. (2020) and Shen et al. (2019) proving the necessity of cost-sensitive threshold shifting in imbalanced credit scoring.
-* **Section II-D: Layer 3: Model Training, Stacking and Cost Optimisation (Lines 144–152)**
-  * The 5 base classifiers: Logistic Regression (`class_weight='balanced'`, saga solver), Random Forest, scikit-learn Gradient Boosting, XGBoost (`scale_pos_weight`), and LightGBM.
-  * 5-fold cross-validated `StackingClassifier` with Logistic Regression meta-learner.
-  * Serialization into [`models/stacked/stacked_model.pkl`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/models/stacked).
-* **Equation (2): The Cost Optimization Formulation (Lines 147–151)**
-  $$\tau^{*} = \arg\min_{\tau \in [0.02,\,0.50]} \; C_{\mathrm{FA}}\,N_{\mathrm{FA}}(\tau) + C_{\mathrm{FR}}\,N_{\mathrm{FR}}(\tau)$$
-  * $C_{\mathrm{FA}} = \$12,000$ (cost of False Approval—loan principal loss).
-  * $C_{\mathrm{FR}} = \$2,500$ (cost of False Rejection—lost interest margin and customer acquisition cost).
-  * Optimal threshold scan identifying $\tau^* = 0.49$.
-* **Section II-E: Tiered Decisioning Policy (Table I) (Lines 161–177)**
-  * Low Risk ($p < 0.245$): Automated Instant Approval.
-  * Medium Risk ($0.245 \le p < 0.49$): Routed to Human Underwriter Manual Review.
-  * High Risk ($p \ge 0.49$): Automated Instant Rejection.
-* **Section IV-A: Model Performance & Evaluation Results (Tables III & IV) (Lines 259–297)**
-  * Held-out test set ROC-AUC table (24,601 test records):
-    * Random Forest: `0.7310`
-    * Logistic Regression: `0.7436`
-    * XGBoost: `0.7515`
-    * LightGBM: `0.7542`
-    * Gradient Boosting: `0.7584`
-    * **Stacked Ensemble**: `0.7556`
-  * Confusion matrix analysis at $\tau^* = 0.49$: 1,398 out of 1,986 actual defaulters successfully caught (**70.4% default recall**).
-* **Section V-A: Discussion: Cost Sensitivity versus Accuracy (Lines 412–428)**
-  * Why accuracy is a deceptive metric in financial risk.
-  * Why the ensemble provides smoother probability calibration than single decision trees.
+* **Section II-C: Layer 2: Preprocessing & Data Transformation in the Cloud (Lines 137–143)**
+  * AWS Glue serverless Python Shell ETL job: Triggered automatically to read raw data from S3, clean anomalous values, drop sparse columns, and write clean outputs back to the `processed/` prefix.
+  * S3-to-S3 decoupled data processing: Compute never traverses a permanent server; intermediate data streams directly through memory.
+* **Section II-F: Layer 5: Orchestration (AWS Step Functions) (Lines 182–184)**
+  * AWS Step Functions: Serverless state machine coordinating cloud microservices.
+  * Synchronous task execution using `startJobRun.sync`.
+  * Deterministic error handling: Catching `States.ALL` and routing to an explicit `PipelineFailed` state to eliminate silent pipeline failures.
+* **Section III-B: AWS Service Breakdown: AWS Glue & AWS Step Functions (Lines 206–207, 218–219)**
+  * AWS Glue: Serverless data integration service billed on a DPU-minute (Data Processing Unit) basis. Eliminates the need to configure, tune, or maintain cluster nodes.
+  * AWS Step Functions: Visual workflow orchestrator written in Amazon States Language. Replaces fragile cron jobs and unmonitored bash scripts with auditable state transitions.
+* **Section IV-B: Table VI Pipeline Stage Execution Summary (Lines 301–318)**
+  * AWS Glue preprocessing execution: **1 minute 52 seconds**, achieving clean S3 output.
+  * AWS Step Functions state machine execution: **2 minutes 31 seconds** (including cold initialization and state transitions), completing with 100% success.
+* **Section III-C: Cost Analysis (Table II) (Lines 224–248)**
+  * AWS Glue DPU compute cost: **$0.03 USD**.
+  * AWS Step Functions state transitions: **$0.00 USD** (Fully covered under AWS Free Tier of 4,000 monthly transitions).
+* **Section V-C: Operational & Architectural Benefits (Lines 446–458)**
+  * Decoupling ETL from serving: Retraining and preprocessing can run asynchronously without impacting live API availability.
 
 ### 4.3 Codebase Walkthrough & File Splits
 Person B must open and explain the following repository files:
 
-#### 1. [`notebooks/03_base_models.ipynb`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/notebooks/03_base_models.ipynb)
-* Walk through base model training and class imbalance parameterization:
+#### 1. [`aws/glue_preprocess.py`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/aws/glue_preprocess.py)
+* **Lines 1–24: Serverless Glue Python Shell Script**:
   ```python
-  # Handling severe 92:8 class imbalance algorithmically
-  lr = LogisticRegression(class_weight='balanced', solver='saga', max_iter=500)
-  xgb_clf = XGBClassifier(scale_pos_weight=neg_to_pos_ratio, eval_metric='auc')
-  lgb_clf = LGBMClassifier(is_unbalance=True, boosting_type='gbdt')
+  import io
+  import boto3
+  import numpy as np
+  import pandas as pd
+
+  s3 = boto3.client("s3")
+
+  # Stream directly from S3 Data Lake into memory buffer
+  df = pd.read_csv(s3.get_object(Bucket=BUCKET, Key="raw/application_train.csv")["Body"])
+
+  # Serverless ETL transformation
+  df["DAYS_EMPLOYED"] = df["DAYS_EMPLOYED"].replace(365243, np.nan)
+  df["CREDIT_INCOME_RATIO"]  = df["AMT_CREDIT"] / df["AMT_INCOME_TOTAL"]
+  df["ANNUITY_INCOME_RATIO"] = df["AMT_ANNUITY"] / df["AMT_INCOME_TOTAL"]
+  df = df.drop(columns=df.columns[df.isnull().mean() > 0.45])
+
+  # Write back to S3 processed prefix
+  buf = io.StringIO()
+  df.to_csv(buf, index=False)
+  s3.put_object(Bucket=BUCKET, Key="processed/application_clean.csv", Body=buf.getvalue())
+  print("Done:", df.shape)
   ```
-* Show the base ROC curves in [`reports/figures/03_base_models_roc.png`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/reports/figures/03_base_models_roc.png).
+  *Cloud Walkthrough Points*:
+  1. Explain **Serverless Streaming**: The script uses `boto3` to stream the S3 object body into memory without ever saving temporary files to a local hard disk.
+  2. Explain **Glue Python Shell vs PySpark**: For a 160 MB dataset, provisioning an Apache Spark cluster on AWS EMR or standard AWS Glue Spark requires 2 to 5 minutes of master/worker node spin-up time and charges a minimum of 2 DPUs. Glue Python Shell provisions in under 10 seconds, runs on a fraction of a DPU (0.0625 DPU), and executes in 1 minute 52 seconds, keeping costs at $0.03.
+  3. Explain **Automated Output**: The output is written directly to `s3://.../processed/application_clean.csv`, ready for model retraining or downstream analytics.
 
-#### 2. [`notebooks/04_stacking.ipynb`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/notebooks/04_stacking.ipynb)
-* Walk through the out-of-fold `StackingClassifier` implementation:
-  ```python
-  estimators = [
-      ('lr', lr_model),
-      ('rf', rf_model),
-      ('xgb', xgb_model),
-      ('lgb', lgb_model)
-  ]
-  stacked = StackingClassifier(
-      estimators=estimators,
-      final_estimator=LogisticRegression(),
-      cv=5,
-      stack_method='predict_proba',
-      n_jobs=-1
-  )
-  stacked.fit(X_train, y_train)
+#### 2. [`aws/step_functions.json`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/aws/step_functions.json)
+* **Lines 1–29: Amazon States Language Definition**:
+  ```json
+  {
+    "Comment": "CreditIQ Serverless ETL State Machine",
+    "StartAt": "GluePreprocess",
+    "States": {
+      "GluePreprocess": {
+        "Type": "Task",
+        "Resource": "arn:aws:states:::glue:startJobRun.sync",
+        "Parameters": {
+          "JobName": "credit-risk-preprocess"
+        },
+        "Catch": [
+          {
+            "ErrorEquals": [
+              "States.ALL"
+            ],
+            "Next": "PipelineFailed"
+          }
+        ],
+        "Next": "Done"
+      },
+      "Done": {
+        "Type": "Succeed"
+      },
+      "PipelineFailed": {
+        "Type": "Fail",
+        "Error": "PipelineFailed"
+      }
+    }
+  }
   ```
-  *Key Concept*: Explain how 5-fold cross-validation generates out-of-fold predictions for the training set, ensuring the Logistic Regression meta-learner does not overfit to base model training predictions.
-* Show [`reports/figures/04_stacking_roc_comparison.png`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/reports/figures/04_stacking_roc_comparison.png).
-
-#### 3. [`notebooks/05_threshold_optimization.ipynb`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/notebooks/05_threshold_optimization.ipynb) & [`notebooks/optimal_threshold.txt`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/notebooks/optimal_threshold.txt)
-* Walk through the cost function calculation:
-  ```python
-  C_FA = 12000  # Cost of False Approval (defaulter approved)
-  C_FR = 2500   # Cost of False Rejection (good borrower rejected)
-
-  thresholds = np.linspace(0.02, 0.50, 49)
-  total_costs = []
-  for t in thresholds:
-      preds = (probs >= t).astype(int)
-      fa = np.sum((preds == 0) & (y_test == 1))
-      fr = np.sum((preds == 1) & (y_test == 0))
-      cost = (C_FA * fa) + (C_FR * fr)
-      total_costs.append(cost)
-
-  optimal_t = thresholds[np.argmin(total_costs)]  # Evaluates to 0.49
-  ```
-* Open [`notebooks/optimal_threshold.txt`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/notebooks/optimal_threshold.txt) and show `0.49`.
-* Show [`reports/figures/05_cost_vs_threshold.png`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/reports/figures/05_cost_vs_threshold.png).
-
-#### 4. [`notebooks/06_evaluation.ipynb`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/notebooks/06_evaluation.ipynb)
-* Present the held-out test evaluation on 24,601 records.
-* Explain the Confusion Matrix at $\tau^* = 0.49$ ([`reports/figures/06_confusion_matrix_optimal.png`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/reports/figures/06_confusion_matrix_optimal.png)):
-  * **True Repay (TN)**: 15,313
-  * **False Rejection / Review (FP)**: 7,302
-  * **False Approval (FN)**: 588 (Kept to a minimum!)
-  * **True Default Detected (TP)**: 1,398 (70.4% default recall)
+  *Cloud Walkthrough Points*:
+  1. Explain **Synchronous Orchestration (`startJobRun.sync`)**: Standard asynchronous job calls trigger a job and return immediately, leaving the state machine unaware of whether the job succeeded or crashed. The `.sync` integration pauses the state machine execution, continuously polling the Glue API in the background until the job reaches a terminal state.
+  2. Explain **Fault Tolerance & Catch Blocks**: If the Glue job runs out of memory, hits an IAM permission exception, or fails due to corrupt input data, the `Catch` block traps `States.ALL` and transitions cleanly to `PipelineFailed`.
+  3. Explain **Visual Execution History**: AWS Step Functions records every state transition with exact timestamps, input payloads, and error outputs in the AWS Console, eliminating the silent pipeline failures that plague ad-hoc cron jobs.
 
 ### 4.4 Slide-by-Slide Speaking Script
-* **Slide 6: The Fallacy of 0.5 Cutoffs in Credit Risk**
-  > *"Thank you, Person A. In standard machine learning tutorials, binary classifiers use a default threshold of 0.5. In commercial banking, this is dangerous. If we lend $100,000 to an applicant who defaults, the bank loses the unrecoverable principal—often $12,000 or more after recovery costs. But if we reject a good applicant, we only lose the interest profit margin—roughly $2,500. A False Approval is nearly 5 times more damaging than a False Rejection."*
-* **Slide 7: Base Models & Class-Imbalance Strategies**
-  > *"To capture both linear patterns and non-linear interactions, we trained 5 diverse models: Logistic Regression, Random Forest, scikit-learn Gradient Boosting, XGBoost, and LightGBM. To counteract the 92:8 class imbalance without corrupting distributions with synthetic SMOTE noise, we tuned algorithmic parameters: using balanced class weights for linear models and scaling positive class gradients via `scale_pos_weight` in XGBoost."*
-* **Slide 8: The Stacking Ensemble Architecture**
-  > *"Rather than relying on a single tree model, we built a 5-fold cross-validated Stacking Ensemble. Logistic Regression, Random Forest, XGBoost, and LightGBM serve as base estimators. A Logistic Regression meta-learner blends their out-of-fold probability predictions. This ensemble achieves a held-out ROC-AUC of 0.7556. Stacking linear and non-linear decision surfaces produces a well-calibrated, smooth probability output that is resilient to feature volatility."*
-* **Slide 9: Cost Function Formulation & Optimal Threshold $\tau^* = 0.49$**
-  > *"We mathematically formalized business loss as a function of the threshold $\tau$, sweeping candidate values across our validation set. As seen in our cost curve, business losses form a steep U-shaped curve. The global loss minimum occurs at $\tau^* = 0.49$. At this threshold, the model catches 1,398 out of 1,986 defaulters—achieving a 70.4% recall on credit defaults and shielding the institution from extreme default loss."*
-* **Slide 10: Operational Three-Tier Risk Policy**
-  > *"Rather than a binary yes/no, our production policy translates probability into three tiers: Low Risk below 0.245 receives automated approval; High Risk above 0.49 is rejected; and Medium Risk between 0.245 and 0.49 is routed for human underwriting review. Next, Person C will demonstrate how we containerized this model and deployed it onto an AWS serverless inference endpoint."*
+* **Slide 6: The Need for Cloud-Native ETL & Orchestration**
+  > *"Thank you, Person A. Once raw data arrives in an S3 Data Lake, relying on manual Python scripts or fragile cron jobs to clean it is unacceptable in an enterprise environment. If a cron job fails silently at 2 AM, downstream production models receive stale or corrupt data. In CreditIQ, we engineered an automated, serverless ETL and workflow orchestration pipeline using AWS Glue and AWS Step Functions."*
+* **Slide 7: Serverless Data Integration with AWS Glue**
+  > *"To transform our raw dataset, we deployed an AWS Glue Python Shell job. Many cloud projects make the mistake of launching large Apache Spark clusters (like Amazon EMR) for moderate tabular datasets, incurring heavy node-booting overhead. Our Glue Python Shell job allocates fractional DPU capacity on demand, streams the CSV directly from S3, cleans data anomalies, computes engineered ratios, and writes the sanitized output back to S3 in just 1 minute and 52 seconds."*
+* **Slide 8: Workflow Orchestration with AWS Step Functions**
+  > *"To coordinate this execution deterministically, we defined an AWS Step Functions state machine using the Amazon States Language. Step Functions acts as our distributed coordinator. Rather than polling Glue manually, we utilized the synchronous `startJobRun.sync` task integration. The state machine triggers the Glue job, maintains execution state, and monitors job progress natively."*
+* **Slide 9: Fault Tolerance & Error Catching**
+  > *"Resilience is a core tenet of cloud architecture. As defined in our JSON state machine, our task includes a `Catch` block configured for `States.ALL`. If the ETL process encounters a corrupted record or network timeout, the state machine captures the error stack trace, halts downstream execution, and routes to an explicit `PipelineFailed` state. This guarantees zero silent failures and provides an immutable visual audit trail in CloudWatch."*
+* **Slide 10: Serverless FinOps & Execution Handoff**
+  > *"Our entire ETL and orchestration workflow executed in 2 minutes and 31 seconds. Step Functions cost $0.00 under the AWS Free Tier, and AWS Glue cost just $0.03 USD. With our data cleaned and stored back in S3, Person C will now demonstrate how we containerized our application and deployed it to a serverless compute endpoint on Amazon SageMaker."*
 
 ### 4.5 Viva & Committee Defense Q&A
-1. **Q: Single Gradient Boosting achieved an ROC-AUC of 0.7584, while the Stacked Ensemble achieved 0.7556. Why deploy the ensemble if its ROC-AUC is 0.0028 lower?**  
-   *Answer*: ROC-AUC measures ranking discrimination, not probability calibration. Single boosted trees produce sharp, uncalibrated probability spikes near decision boundaries. The stacked ensemble blends linear decision boundaries (Logistic Regression) with tree ensembles (Random Forest, XGBoost, LightGBM), producing smoother, more reliable probability estimates essential for stable thresholding and financial underwriting.
-2. **Q: How does 5-fold cross-validation in the StackingClassifier prevent data leakage?**  
-   *Answer*: If base models predicted on the data they were trained on, their probabilities would be over-optimistic, causing the meta-learner to overfit to training noise. 5-fold CV ensures the meta-estimator is trained strictly on out-of-fold predictions—where each fold's probabilities are generated by base models that never saw that fold during training.
-3. **Q: Why not use SMOTE or Random Oversampling for handling the class imbalance?**  
-   *Answer*: In 192-dimensional sparse tabular data with numerous one-hot encoded flags, synthetic interpolation via SMOTE creates unrealistic applicant records in empty feature space. Instead, algorithmic weighting (`scale_pos_weight` in XGBoost and `class_weight='balanced'` in Logistic Regression) penalizes minority class misclassification during gradient updates without distorting empirical data topology.
+1. **Q: Why choose AWS Glue Python Shell instead of AWS Glue Apache Spark or Amazon EMR?**  
+   *Answer*: Apache Spark is designed for multi-gigabyte or terabyte distributed datasets. For our 160 MB dataset, spinning up an EMR cluster or Glue Spark job takes 3 to 5 minutes just to provision worker nodes and allocate JVM executors, with a minimum billing of 2 DPUs. Glue Python Shell boots in seconds, runs on 0.0625 DPU, completes in 1 minute 52 seconds, and costs only $0.03, optimizing both compute latency and cost.
+2. **Q: How does the `.sync` suffix in `arn:aws:states:::glue:startJobRun.sync` alter Step Functions behavior?**  
+   *Answer*: Without `.sync`, Step Functions initiates the Glue job asynchronously and immediately moves to the next state, even though the data is not yet cleaned. By appending `.sync`, Step Functions assumes task management responsibility: it suspends the state machine, monitors Glue job status events, and only advances to `Done` once Glue returns a `SUCCEEDED` status code.
+3. **Q: What happens if an ETL job fails during execution? How does Step Functions handle it?**  
+   *Answer*: The state machine's `Catch` block intercepts the failure exception via `States.ALL`. Instead of terminating abruptly or hanging indefinitely, it routes execution to the `PipelineFailed` state. This triggers an automated CloudWatch metric and can emit an Amazon SNS alert to on-call DevOps engineers while preventing bad data from overwriting production stores.
 
 ---
 
-## 5. Person C: Cloud Containerization, Serverless Inference & Real-Time Backend
+## 5. Person C: Cloud Containerization & Serverless Model Hosting Infrastructure
 
-### 5.1 Role & Ownership Overview
-* **Presenter Role**: Cloud Infrastructure & ML Serving Engineer
-* **Mission**: Detail the packaging of models into Amazon ECR, demonstrate the SageMaker Serverless endpoint configuration, explain the dynamic on-the-fly feature reconstruction engine in `predict_single.py`, analyze the AWS Lambda event routing layer, and break down server-side inference latency down to the millisecond.
+### 5.1 Role & Cloud Mission
+* **Presenter Role**: Cloud Containerization & Serverless Infrastructure Engineer
+* **Mission**: Detail the packaging of application workloads into Amazon Elastic Container Registry (ECR), explain Linux container optimization in Docker (`python:3.13-slim` and OpenMP `libgomp1`), demonstrate the SageMaker REST contract (`/ping` and `/invocations`), analyze Amazon SageMaker Serverless Endpoint configuration, and explain the architectural trade-offs of scale-to-zero compute versus cold starts.
 
 ### 5.2 Assigned Paper Sections ([`reference.tex`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/reference.tex))
 * **Section II-D: Layer 4: Model Hosting (Amazon SageMaker) (Lines 154–156)**
-  * Artifact bundle packaging: `model.tar.gz` containing `stacked_model.pkl` and `preprocessor.pkl`.
-  * Custom Amazon ECR container: Python 3.13-slim, pinning exact dependencies (scikit-learn, XGBoost, LightGBM, Flask).
-  * Amazon SageMaker Serverless Endpoint: 3072–4096 MB memory allocation, max concurrency of 2, auto-scaling to zero when idle.
-  * SageMaker REST contract: Exposing `/ping` for health checks and `/invocations` for real-time scoring.
-* **Section II-D: On-the-Fly Feature Reconstruction (Lines 157–160)**
-  * The production reality: A loan officer or web user provides only 5 to 15 fields, not all 192 raw and encoded features.
-  * Merging partial inputs with a baseline dictionary of typical values (`DEFAULTS`).
-  * Dynamically recomputing all 9 engineered ratios in real time.
-  * Aligning column order strictly with the schema contract (`preprocessor.feature_names_in_`).
-* **Section III-A: Technology Stack (Lines 188–196)**
-  * Docker, Python 3.13-slim, Flask, Boto3, Amazon ECR, SageMaker Serverless, AWS Lambda.
-* **Section IV-B: Functional Validation & Parity (Lines 298–300)**
-  * Numerical parity: 500 test records scored both locally on FastAPI and on AWS SageMaker.
-  * **Maximum absolute probability difference = 0.0** (Bit-identical execution).
-* **Section IV-C: Latency Breakdown (Tables V & VI) (Lines 320–362)**
-  * Cloud server-side latency over 1,000 warm requests:
-    * API Gateway routing: **6 ms**
-    * Lambda execution overhead: **9 ms**
-    * SageMaker endpoint overhead: **11 ms**
-    * Model inference (preprocessor + stacked ensemble): **41 ms**
-    * DynamoDB PutItem audit write: **6 ms**
-    * **Total server-side median latency: 73 ms** (Only 27 ms over local localhost!)
-* **Section V-B: Discussion: Serverless Trade-Offs (Lines 429–445)**
-  * Cold start analysis: 9.8-second average cold start on container initialization vs 73 ms warm execution.
-  * Trade-off: Scale-to-zero saves hundreds of dollars in idle compute at the cost of an initial warm-up delay.
+  * Packaging application artifacts into `model.tar.gz` and uploading to Amazon S3.
+  * Registering the container image in Amazon Elastic Container Registry (ECR).
+  * Amazon SageMaker Serverless Inference endpoint: Provisioning compute on demand with automatic scale-to-zero capability.
+  * Memory allocation: Configured for **3072 MB** memory and **MaxConcurrency = 2**.
+  * The SageMaker HTTP Contract: Implementing `/ping` for endpoint health probes and `/invocations` for real-time inference requests.
+* **Section III-A & III-B: Cloud Technology Stack: Docker, ECR & SageMaker (Lines 188–208)**
+  * Docker: Standardizing application dependencies to eliminate "works on my machine" issues across cloud environments.
+  * Amazon ECR: Fully managed private container registry providing secure image storage, vulnerability scanning, and high-speed VPC image pulls.
+  * Amazon SageMaker Serverless: Eliminates the requirement to manage EC2 instances or autoscaling groups; charges strictly for compute seconds utilized per request.
+* **Section IV-B: Table VI Pipeline Execution Summary (Lines 301–318)**
+  * SageMaker serverless endpoint provisioning: completed in **4 minutes 18 seconds**, transitioning to `InService`.
+* **Section IV-C: Latency & Compute Breakdown (Tables V & VI) (Lines 320–362)**
+  * Median server-side compute breakdown:
+    * SageMaker internal endpoint overhead: **11 ms**
+    * In-container application execution: **41 ms**
+    * Total server-side response: **73 ms**
+* **Section V-B: Discussion: Serverless Trade-Offs & Cold Start Analysis (Lines 429–445)**
+  * The Serverless Cold Start: An average of **9.8 seconds** across 10 cold invocations while AWS provisions the container environment and loads artifacts into RAM.
+  * Contrast with warm requests: Once initialized, subsequent requests execute in a median of **73 ms**.
+  * Scale-to-zero economics: The 9.8-second initial latency is easily tolerated within API Gateway's 29-second timeout limit, saving hundreds of dollars per year compared to always-on provisioned EC2 instances.
+* **Section III-C: Cost Analysis (Table II) (Lines 224–248)**
+  * SageMaker Serverless compute cost: **$0.38 USD** for 1,000 evaluations.
+  * Amazon ECR private repository storage: **$0.04 USD**.
 
 ### 5.3 Codebase Walkthrough & File Splits
 Person C must open and explain the following repository files:
 
-#### 1. [`predict_single.py`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/predict_single.py)
-* Walk through the core inference engine (Lines 1–148):
-  * **Lines 11–21**: Loading serialized artifacts and the cost-optimal threshold:
-    ```python
-    model = joblib.load("models/stacked/stacked_model.pkl")
-    preprocessor = joblib.load("models/preprocessor.pkl")
-    with open("notebooks/optimal_threshold.txt") as f:
-        OPTIMAL_THRESHOLD = float(f.read().strip())
-    ```
-  * **Lines 60–101**: The `DEFAULTS` baseline dictionary providing typical applicant values.
-  * **Lines 104–126**: On-the-fly feature engineering:
-    ```python
-    data = DEFAULTS.copy()
-    data.update(inputs)
-    data['CREDIT_INCOME_RATIO']   = credit / income if income else 0
-    data['ANNUITY_INCOME_RATIO']  = annuity / income if income else 0
-    data['CREDIT_DURATION_RATIO'] = credit / annuity if annuity else 0
-    data['EMPLOYED_AGE_RATIO']    = days_emp / days_age if days_age else 0
-    data['GOODS_CREDIT_RATIO']    = goods / credit if credit else 0
-    data['AGE_YEARS']             = round(-days_age / 365, 1)
-    data['YEARS_EMPLOYED']        = round(-days_emp / 365, 1)
-    data['INCOME_PER_PERSON']     = income / max(data['CNT_FAM_MEMBERS'], 1)
-    ```
-  * **Lines 129–145**: Strict schema alignment and decision tiering:
-    ```python
-    df = pd.DataFrame([data])[list(preprocessor.feature_names_in_)]
-    df_processed = preprocessor.transform(df)
-    prob = model.predict_proba(df_processed)[0][1]
-    if prob >= OPTIMAL_THRESHOLD:
-        decision, tier = "Reject (High Risk)", "high"
-    elif prob >= OPTIMAL_THRESHOLD * 0.5:
-        decision, tier = "Review (Medium Risk)", "medium"
-    else:
-        decision, tier = "Approve (Low Risk)", "low"
-    ```
-
-#### 2. [`aws/sagemaker/Dockerfile`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/aws/sagemaker/Dockerfile) & [`aws/sagemaker/serve.py`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/aws/sagemaker/serve.py)
-* Walk through container definition and server contract:
+#### 1. [`aws/sagemaker/Dockerfile`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/aws/sagemaker/Dockerfile)
+* **Lines 1–11: Optimized Container Image Definition**:
   ```dockerfile
   FROM python:3.13-slim
   RUN apt-get update && apt-get install -y --no-install-recommends libgomp1 && rm -rf /var/lib/apt/lists/*
@@ -383,108 +343,192 @@ Person C must open and explain the following repository files:
   COPY aws/sagemaker/serve.py /app/serve.py
   ENTRYPOINT ["python", "/app/serve.py"]
   ```
-  *Key Concept*: Why `libgomp1`? OpenMP is strictly required by XGBoost and LightGBM for multi-threaded inference in Linux. Unnecessary CUDA libraries are removed to minimize container size to ~400 MB.
-* Walk through [`aws/sagemaker/serve.py`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/aws/sagemaker/serve.py):
-  * `os.chdir("/opt/ml/model")` where SageMaker automatically mounts `model.tar.gz`.
-  * Flask route `@app.get("/ping")` returning 200 for SageMaker health checks.
-  * Flask route `@app.post("/invocations")` deserializing JSON and calling `predict_single.predict()`.
+  *Cloud Walkthrough Points*:
+  1. Explain **Base Image Selection (`python:3.13-slim`)**: Rather than using bloated standard images (1.5+ GB), `slim` minimizes the attack surface and reduces image pull latency across AWS networks.
+  2. Explain **OpenMP (`libgomp1`)**: High-performance multi-threaded compute libraries in Linux require OpenMP. Without `libgomp1`, compiled C++ inference backends crash on container startup.
+  3. Explain **Layer Pruning**: Removing cached package archives (`rm -rf /var/lib/apt/lists/*`) and uninstalling unnecessary CUDA GPU libraries (`pip uninstall -y nvidia-nccl-cu12`) shrinks the final container image to ~400 MB, speeding up serverless container provisioning.
+
+#### 2. [`aws/sagemaker/serve.py`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/aws/sagemaker/serve.py)
+* **Lines 1–23: SageMaker Container HTTP Contract**:
+  ```python
+  import os
+  import json
+  os.chdir("/opt/ml/model")
+
+  from flask import Flask, request
+  import predict_single
+
+  app = Flask(__name__)
+
+  @app.get("/ping")
+  def ping():
+      return "", 200
+
+  @app.post("/invocations")
+  def invocations():
+      result = predict_single.predict(request.get_json(force=True))
+      return json.dumps(result), 200, {"Content-Type": "application/json"}
+
+  app.run(host="0.0.0.0", port=8080)
+  ```
+  *Cloud Walkthrough Points*:
+  1. Explain **SageMaker Filesystem Standard (`/opt/ml/model`)**: When SageMaker initializes an endpoint, it downloads `model.tar.gz` from S3 and extracts it into `/opt/ml/model`. The script sets its working directory here so serialized models load via native relative paths.
+  2. Explain **The `/ping` Health Probe**: SageMaker's internal load balancer polls `GET /ping` on port 8080. The endpoint only transitions to `InService` once the container returns HTTP 200.
+  3. Explain **The `/invocations` Route**: Handles incoming prediction payloads forwarded by AWS Lambda, deserializing JSON, executing inference, and returning JSON responses.
 
 #### 3. [`aws/deploy_sagemaker.py`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/aws/deploy_sagemaker.py)
-* Walk through deployment automation:
-  * Creating `model.tar.gz` containing `stacked_model.pkl` and `preprocessor.pkl`.
-  * Uploading to `s3://{BUCKET}/models/model.tar.gz`.
-  * Calling `sm.create_model()`, `sm.create_endpoint_config()` with `ServerlessConfig: {"MemorySizeInMB": 3072, "MaxConcurrency": 2}`, and `sm.create_endpoint()`.
-
-#### 4. [`aws/lambda_handler.py`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/aws/lambda_handler.py)
-* Walk through the serverless integration layer:
+* **Lines 1–44: Infrastructure-as-Code Deployment**:
   ```python
+  # 1. Package model artifacts and upload to S3 Data Lake
+  with tarfile.open("model.tar.gz", "w:gz") as tar:
+      tar.add("models/stacked/stacked_model.pkl", arcname="models/stacked/stacked_model.pkl")
+      tar.add("models/preprocessor.pkl", arcname="models/preprocessor.pkl")
+  boto3.client("s3").upload_file("model.tar.gz", BUCKET, "models/model.tar.gz")
+
+  # 2. Register SageMaker Model with ECR image & S3 artifact
+  sm.create_model(
+      ModelName=name,
+      ExecutionRoleArn=role_arn,
+      PrimaryContainer={"Image": image_uri, "ModelDataUrl": f"s3://{BUCKET}/models/model.tar.gz"},
+  )
+
+  # 3. Configure Serverless Endpoint (3072 MB RAM, MaxConcurrency 2)
+  sm.create_endpoint_config(
+      EndpointConfigName=name,
+      ProductionVariants=[{
+          "VariantName": "AllTraffic",
+          "ModelName": name,
+          "ServerlessConfig": {"MemorySizeInMB": 3072, "MaxConcurrency": 2},
+      }],
+  )
+
+  # 4. Create or update the live endpoint
+  sm.create_endpoint(EndpointName=endpoint, EndpointConfigName=name)
+  ```
+  *Cloud Walkthrough Points*:
+  1. Explain **Automated Provisioning**: The entire deployment is defined programmatically via Boto3, replacing error-prone manual AWS Console clicks.
+  2. Explain **`ServerlessConfig`**: We allocate 3072 MB of ephemeral RAM. Memory allocation in serverless compute directly dictates the vCPU proportion assigned to the container, optimizing scoring execution down to 41 ms.
+
+### 5.4 Slide-by-Slide Speaking Script
+* **Slide 11: The Cloud Hosting Dilemma**
+  > *"Thank you, Person B. In traditional cloud architectures, hosting a microservice requires provisioning an Amazon EC2 instance or an Amazon EKS Kubernetes cluster. An `m5.large` instance runs 24 hours a day, 7 days a week—costing upwards of $70 per month even if zero requests arrive on weekends. In CreditIQ, we eliminated idle compute spend entirely by architecting a serverless container hosting solution on Amazon SageMaker."*
+* **Slide 12: Custom Linux Containerization via Amazon ECR**
+  > *"Pre-built cloud machine learning containers often suffer from bloat and dependency mismatch. To achieve full control, we authored a custom Docker container based on `python:3.13-slim`. We installed the Linux OpenMP library `libgomp1` for multi-threaded CPU parallelization, stripped unused GPU drivers, and implemented SageMaker's standard `/ping` and `/invocations` REST contract in Flask. We pushed our image to a private Amazon Elastic Container Registry (ECR) repository."*
+* **Slide 13: Amazon SageMaker Serverless Inference**
+  > *"Using our Infrastructure-as-Code script in `deploy_sagemaker.py`, we created a SageMaker Serverless Endpoint configured with 3072 MB of memory and a maximum concurrency of 2. Unlike provisioned endpoints, serverless endpoints scale dynamically to zero when no loan applications are being processed. AWS charges us strictly for the compute duration used during active requests, measured down to the millisecond."*
+* **Slide 14: Serverless Cold Start Analysis & Trade-Offs**
+  > *"A fundamental concept in cloud computing is the serverless cold start. As evaluated in Section V-B of our paper, when our endpoint is called after an idle period, AWS provisions a micro-VM, pulls the container, and loads artifacts into memory—incurring a 9.8-second cold start. In retail banking, a 10-second wait on an initial morning application is well within API Gateway's 29-second timeout. Once warm, all subsequent requests execute in just 41 milliseconds of compute time."*
+* **Slide 15: Compute Efficiency & Gateway Handoff**
+  > *"Across 1,000 warm evaluation requests, SageMaker added just 11 ms of internal routing overhead and cost only $0.38 USD. With our containerized compute engine deployed and running, Person D will now explain how we route traffic securely from the global edge using API Gateway, Lambda, CloudFront, and DynamoDB."*
+
+### 5.5 Viva & Committee Defense Q&A
+1. **Q: Why use Amazon SageMaker Serverless Inference instead of deploying the container on AWS Fargate or an EC2 instance?**  
+   *Answer*: EC2 instances require paying for 24/7 compute regardless of incoming traffic, resulting in high idle costs. AWS Fargate still requires managing an Application Load Balancer ($16/month baseline) and configuring autoscaling rules with minimum task counts. SageMaker Serverless Inference scales to true zero with zero infrastructure management, provides built-in TLS endpoints, and charges strictly per millisecond of compute used during inference.
+2. **Q: How does memory allocation in SageMaker Serverless impact compute performance?**  
+   *Answer*: In AWS serverless architectures (both Lambda and SageMaker Serverless), vCPU allocation scales proportionally with configured memory. Allocating 3072 MB gives our container dedicated virtual CPU threads, allowing multi-threaded C++ libraries in LightGBM and scikit-learn to execute in parallel, reducing model inference time to 41 ms.
+3. **Q: How can a bank eliminate the 9.8-second cold start during peak business hours?**  
+   *Answer*: SageMaker Serverless supports provisioned concurrency, which maintains a pre-warmed pool of container instances during scheduled business hours (e.g., 9 AM to 5 PM). Alternatively, a simple CloudWatch Event Rule can trigger a scheduled warm-up ping every 5 minutes to keep the container active in memory.
+
+---
+
+## 6. Person D: Serverless API Routing, Database Auditing, Edge CDN & Cloud FinOps
+
+### 6.1 Role & Cloud Mission
+* **Presenter Role**: Cloud Architect, Security, Compliance & FinOps Lead
+* **Mission**: Detail the event-driven FaaS layer in AWS Lambda, explain low-latency API Gateway HTTP API routing, demonstrate immutable compliance auditing on Amazon DynamoDB, present edge delivery via Amazon CloudFront with Origin Access Control (OAC), walk through IAM security and CloudWatch observability, and deliver the final FinOps cost analysis and live platform demonstration.
+
+### 6.2 Assigned Paper Sections ([`reference.tex`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/reference.tex))
+* **Section II-E: Layer 4: API Routing & Auditing (Lines 179–181)**
+  * Amazon API Gateway HTTP API: Low-latency `$default` auto-deploy route handling `GET /predict`.
+  * AWS Lambda: Lightweight serverless event handler connecting API Gateway, SageMaker, and DynamoDB.
+  * Amazon DynamoDB Single-Table Audit Store: Partition Key `applicant_id` (UUID), Sort Key `timestamp` (UTC ISO-8601).
+  * Persisting raw inputs, computed default probability, risk tier, and operational decision to fulfill FCRA (Fair Credit Reporting Act) and ECOA regulatory audit compliance.
+* **Section II-F: Layer 5: Security Governance & Observability (Lines 182–184)**
+  * AWS IAM Least Privilege: `sts:AssumeRole` trust policy granting ephemeral execution permissions to Glue, SageMaker, Lambda, and Step Functions. Zero long-lived AWS secret keys hardcoded in code.
+  * Amazon CloudWatch: Centralized log groups (`/aws/lambda/...`, `/aws/sagemaker/...`), API Gateway latency metrics, Lambda invocation error alarms.
+* **Section III-B: CloudFront CDN with Origin Access Control (Lines 212–215)**
+  * Amazon CloudFront CDN: Distributing the single-page application ([`credit-risk-demo.html`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/credit-risk-demo.html)) globally across edge locations over HTTPS.
+  * Origin Access Control (OAC SigV4): Keeping the hosting S3 bucket 100% private, preventing direct public S3 bucket exposure.
+* **Section IV-C: Tables V & VI: Server-Side Latency Breakdown (Lines 320–362)**
+  * End-to-end server-side execution across AWS components:
+    * API Gateway routing: **6 ms**
+    * Lambda execution overhead: **9 ms**
+    * SageMaker endpoint overhead: **11 ms**
+    * In-container scoring: **41 ms**
+    * DynamoDB PutItem audit write: **6 ms**
+    * **Total Server-Side Median Latency: 73 ms**
+  * Client-observed latency analysis: 284 ms median due to physical transatlantic WAN round-trip from Mumbai to `us-east-1` (North Virginia).
+* **Section IV-D: Operational Reliability & Scalability (Table VII) (Lines 363–386)**
+  * 100% request success rate over 1,000 warm requests.
+  * Sustained throughput of **21.4 requests/second** under concurrency limit 2.
+  * Exactly 1,000 out of 1,000 audit records persisted to DynamoDB.
+* **Section III-C: Table II: Cloud FinOps & Cost Analysis (Lines 224–248)**
+  * S3: $0.01 | Athena: $0.01 | Glue: $0.03 | SageMaker: $0.38 | ECR: $0.04
+  * Lambda, API Gateway, DynamoDB, CloudFront, Step Functions, CloudWatch: **$0.00** (Free Tier)
+  * **Total Evaluation Cost: $0.47 USD**
+* **Section V-C, VI & VII: Operational Benefits, Future Scope & Conclusion (Lines 446–475)**
+  * Multi-region active-active deployment (`ap-south-1` + `us-east-1`) to cut WAN latency.
+  * Amazon Cognito OAuth2 JWT authentication and AWS KMS customer-managed key encryption.
+
+### 6.3 Codebase Walkthrough & File Splits
+Person D must open and explain the following repository files:
+
+#### 1. [`aws/lambda_handler.py`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/aws/lambda_handler.py)
+* **Lines 1–53: Event-Driven FaaS Orchestrator**:
+  ```python
+  import json, uuid, datetime
+  from decimal import Decimal
+  import boto3
+
+  sm = boto3.client("sagemaker-runtime")
+  table = boto3.resource("dynamodb").Table("credit-risk-audit")
+
   def handler(event, context):
       q = event.get("queryStringParameters") or {}
       inputs = {NUM[k]: float(v) for k, v in q.items() if k in NUM}
       inputs.update({STR[k]: v for k, v in q.items() if k in STR})
-      if "days_employed" in q:
-          inputs["DAYS_EMPLOYED"] = -abs(float(q["days_employed"]))
-      if "age_years" in q:
-          inputs["DAYS_BIRTH"] = -(float(q["age_years"]) * 365)
 
+      # 1. Invoke SageMaker Serverless Endpoint via Boto3
       resp = sm.invoke_endpoint(
           EndpointName="credit-risk-endpoint",
           ContentType="application/json",
           Body=json.dumps(inputs)
       )
       result = json.loads(resp["Body"].read())
-      # DynamoDB audit write and CORS response formatting...
+
+      # 2. Asynchronous Immutable Audit Write to DynamoDB
+      table.put_item(Item={
+          "applicant_id": q.get("applicant_id", str(uuid.uuid4())),
+          "timestamp": datetime.datetime.utcnow().isoformat(),
+          "inputs": json.dumps(inputs),
+          "probability": Decimal(str(result.get("probability", -1))),
+          "tier": result.get("tier", "error"),
+          "decision": result.get("decision", result.get("error", "")),
+      })
+
+      # 3. Return CORS-Compliant JSON Response
+      return {
+          "statusCode": 200,
+          "headers": {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"},
+          "body": json.dumps(result),
+      }
   ```
+  *Cloud Walkthrough Points*:
+  1. Explain **Thin FaaS Architecture**: Lambda does not load heavy ML libraries or models into memory, keeping the deployment package tiny (<5 KB) and execution duration under 9 ms.
+  2. Explain **Decimal Conversion for DynamoDB**: DynamoDB does not support standard IEEE floating point types; Lambda converts float probabilities to Python `Decimal` to ensure exact financial precision.
+  3. Explain **CORS Headers**: Injects `Access-Control-Allow-Origin: *` to enable cross-origin browser requests from CloudFront.
 
-### 5.4 Slide-by-Slide Speaking Script
-* **Slide 11: The Cloud Serving Challenge**
-  > *"Thank you, Person B. Training an ML model in a Jupyter Notebook is straightforward, but serving it to retail loan officers with low latency, zero maintenance, and strict schema compliance is where most data science projects fail. In CreditIQ, we engineered a fully containerized serverless serving architecture on Amazon SageMaker and AWS Lambda."*
-* **Slide 12: Custom Containerization via Amazon ECR**
-  > *"Rather than relying on AWS pre-built scikit-learn containers that lack modern LightGBM or XGBoost versions, we built a custom lightweight Docker container based on `python:3.13-slim`. We installed OpenMP (`libgomp1`) for high-speed multi-threaded tree inference, stripped unused GPU libraries, implemented the SageMaker `/ping` and `/invocations` contract in Flask, and pushed the image to Amazon Elastic Container Registry (ECR)."*
-* **Slide 13: Amazon SageMaker Serverless Inference**
-  > *"We deployed our container to a SageMaker Serverless Endpoint configured with 3072 MB memory. Unlike traditional provisioned endpoints that cost $50 to $100 per month just sitting idle, serverless inference automatically scales down to absolute zero when there are no loan applications. AWS bills us strictly per millisecond of compute during active scoring."*
-* **Slide 14: On-the-Fly Feature Reconstruction Engine**
-  > *"A critical contribution of our codebase in `predict_single.py` is On-the-Fly Feature Reconstruction. An applicant only enters 10 basic fields like income, credit amount, and age. Our module merges these over a curated baseline vector, recalculates our 9 engineered financial ratios in microseconds, and aligns columns exactly to the 192 features expected by our preprocessor. This eliminates training-serving skew by construction."*
-* **Slide 15: Low-Latency Performance & Parity Verification**
-  > *"In our testing across 1,000 warm requests, total server-side latency averaged just 73 milliseconds: 6 ms in API Gateway, 9 ms in Lambda, 11 ms in SageMaker overhead, 41 ms in model execution, and 6 ms in DynamoDB writing. Most importantly, across 500 test applicants, our cloud predictions showed 0.0 numerical drift compared to local execution. Now, Person D will explain our edge content delivery, compliance auditing, and cloud economics."*
+#### 2. [`aws/setup_apigw.py`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/aws/setup_apigw.py)
+* **Lines 1–68: HTTP API Gateway Automation**:
+  * Creates HTTP API `credit-risk-api` (6 ms routing overhead vs 30+ ms in legacy REST APIs).
+  * Creates `AWS_PROXY` integration to Lambda ARN with Payload Format Version 2.0.
+  * Adds route `GET /predict` on `$default` stage with `AutoDeploy=True`.
+  * Grants Lambda invoke permissions via `lam.add_permission()` using Principal `apigateway.amazonaws.com`.
 
-### 5.5 Viva & Committee Defense Q&A
-1. **Q: How did you handle the 9.8-second serverless cold start in SageMaker?**  
-   *Answer*: Cold starts occur only on the initial container spin-up after an idle period. At 9.8 seconds, it easily finishes within API Gateway's 29-second HTTP timeout. For production commercial banks operating during fixed hours (9 AM - 5 PM), SageMaker supports provisioned concurrency or scheduled warm-up pings to eliminate cold starts entirely.
-2. **Q: Why place an AWS Lambda function between API Gateway and SageMaker instead of integrating API Gateway directly with SageMaker?**  
-   *Answer*: API Gateway direct integration would require mapping raw query parameters into SageMaker JSON using complex VTL (Velocity Template Language), and it cannot simultaneously write audit records to DynamoDB. Lambda acts as an event orchestrator: it validates types, formats payload bodies, calls SageMaker, logs the immutable audit row to DynamoDB, and injects CORS headers in a clean 9 ms execution.
-3. **Q: How does the system ensure zero training-serving feature skew?**  
-   *Answer*: The exact same scoring code ([`predict_single.py`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/predict_single.py)) and serialized artifacts (`preprocessor.pkl`, `optimal_threshold.txt`) are copied directly into the Docker container. Furthermore, `predict_single.py` forces input DataFrames to match `preprocessor.feature_names_in_` in exact name and column order before calling `.transform()`.
-
----
-
-## 6. Person D: Global Delivery, Security Governance, Auditability & Financial Economics
-
-### 6.1 Role & Ownership Overview
-* **Presenter Role**: Cloud Architect, Security & Compliance Lead
-* **Mission**: Demonstrate edge content delivery using Amazon CloudFront with Origin Access Control (OAC), explain API Gateway HTTP API routing, prove regulatory audit compliance with Amazon DynamoDB, present the unified IAM security and CloudWatch observability architecture, detail the $0.47 FinOps cost analysis, and execute the live interactive demonstration.
-
-### 6.2 Assigned Paper Sections ([`reference.tex`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/reference.tex))
-* **Section II-E: Layer 4: API Routing and Auditing (Lines 179–181)**
-  * Amazon API Gateway HTTP API: Low-latency `$default` auto-deploy route `GET /predict`.
-  * Amazon DynamoDB single-table audit store: Partition Key `applicant_id` (UUID), Sort Key `timestamp` (UTC ISO-8601).
-  * Persisting raw inputs, computed default probability, risk tier, and final decision for compliance with Fair Credit Reporting Act (FCRA) and ECOA regulations.
-* **Section II-F: Layer 5: Security, Governance & Observability (Lines 182–184)**
-  * AWS IAM: `sts:AssumeRole` trust policy granting least-privilege execution permissions to Glue, SageMaker, Lambda, and Step Functions without hardcoding API keys.
-  * Amazon CloudWatch: Centralized log groups (`/aws/lambda/credit-risk-predict`, `/aws/sagemaker/Endpoints/credit-risk-endpoint`), latency metrics, and error alarms.
-* **Section III-B: Technology Stack (Lines 212–223)**
-  * Amazon CloudFront CDN with Origin Access Control (OAC SigV4) distributing the frontend globally over HTTPS while keeping the S3 bucket 100% private.
-  * Amazon DynamoDB on-demand capacity mode.
-  * Frontend: Single-page zero-build HTML5, Vanilla CSS, and JavaScript ([`credit-risk-demo.html`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/credit-risk-demo.html)).
-* **Section III-C: AWS Service Cost Analysis (Table II) (Lines 224–248)**
-  * Full workload evaluation cost breakdown:
-    * Amazon S3: **$0.01**
-    * Amazon Athena: **$0.01**
-    * AWS Glue (DPU-minutes): **$0.03**
-    * SageMaker Serverless (compute seconds): **$0.38**
-    * AWS Lambda (1M free tier): **$0.00**
-    * API Gateway HTTP API: **$0.00**
-    * Amazon DynamoDB: **$0.00**
-    * Amazon CloudFront (1 TB free tier): **$0.00**
-    * Step Functions (free tier): **$0.00**
-    * CloudWatch: **$0.00**
-    * Amazon ECR storage: **$0.04**
-    * **Total Evaluation Cost: $0.47 USD**
-* **Section IV-D: Operational Comparison (Table VII) (Lines 363–386)**
-  * 100% request success rate over 1,000 requests.
-  * Sustained throughput: 21.4 requests/second under concurrency limit 2.
-  * Audit persistence: Exactly 1,000 out of 1,000 decisions stored in DynamoDB.
-* **Section V-C, VI & VII: Operational Benefits, Limitations, Future Scope & Conclusion (Lines 446–475)**
-  * Limitations: Single-region WAN latency (Mumbai client to `us-east-1` adding ~200 ms network RTT); single-table Home Credit dataset without bureau history joins.
-  * Future Scope: Multi-region active-active deployment (`ap-south-1` + `us-east-1`), Amazon Cognito OAuth2 user authentication, and AWS KMS customer-managed encryption keys.
-
-### 6.3 Codebase Walkthrough & File Splits
-Person D must open and explain the following repository files:
-
-#### 1. [`aws/setup_cloudfront.py`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/aws/setup_cloudfront.py)
-* Walk through CDN automation and Origin Access Control (OAC):
+#### 3. [`aws/setup_cloudfront.py`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/aws/setup_cloudfront.py)
+* **Lines 1–100: CloudFront CDN & Origin Access Control (OAC)**:
   ```python
-  # Creating SigV4 Origin Access Control
+  # Create SigV4 Origin Access Control
   resp = cf.create_origin_access_control(
       OriginAccessControlConfig={
           'Name': 'credit-risk-web-oac',
@@ -493,7 +537,7 @@ Person D must open and explain the following repository files:
           'OriginAccessControlOriginType': 's3'
       }
   )
-  # Attaching S3 bucket policy allowing ONLY CloudFront OAC:
+  # Lock S3 Bucket Policy to CloudFront Service Principal ONLY
   policy = {
       "Version": "2012-10-17",
       "Statement": [{
@@ -506,25 +550,11 @@ Person D must open and explain the following repository files:
       }]
   }
   ```
-  *Key Concept*: Explain why OAC is superior to old OAI (Origin Access Identity)—OAC supports AWS Signature Version 4, server-side KMS encryption, and all S3 methods across all AWS regions.
+  *Cloud Walkthrough Points*:
+  1. Explain **Origin Access Control (OAC)**: The S3 bucket has Block Public Access 100% enabled. Direct HTTP requests to S3 are denied. Only CloudFront edge servers possessing signed SigV4 headers can fetch the web application.
 
-#### 2. [`aws/setup_apigw.py`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/aws/setup_apigw.py)
-* Walk through HTTP API Gateway creation:
-  * Creating `credit-risk-api` with `AWS_PROXY` integration to Lambda ARN.
-  * Adding route `GET /predict`.
-  * Creating `$default` stage with `AutoDeploy=True`.
-  * Invoking `lam.add_permission()` to grant API Gateway invoke rights on Lambda.
-
-#### 3. [`credit-risk-demo.html`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/credit-risk-demo.html)
-* Walk through the production UI architecture:
-  * Zero-build single file HTML5/CSS3/Vanilla JS.
-  * Section 01: Motivation & Cost Asymmetry explanation.
-  * Section 02: System Architecture overview ([`system architecture.png`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/system%20architecture.png)).
-  * Section 03: Interactive AWS Service Matrix.
-  * Section 04: Live Decision Engine featuring real-time client-side ratio math, scenario presets (e.g., *Prime Homebuyer*, *Marginal Retail Borrower*, *High-Risk Speculator*), dynamic risk gauge, and fallback simulation engine.
-
-#### 4. [`aws/iam_trust_policy.json`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/aws/iam_trust_policy.json) & DynamoDB Audit Schema
-* Explain the unified trust policy:
+#### 4. [`aws/iam_trust_policy.json`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/aws/iam_trust_policy.json)
+* Explain the centralized `sts:AssumeRole` trust policy:
   ```json
   {
     "Version": "2012-10-17",
@@ -542,77 +572,70 @@ Person D must open and explain the following repository files:
     }]
   }
   ```
-* Explain DynamoDB single-table audit item structure ([`aws/lambda_handler.py:L39-46`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/aws/lambda_handler.py#L39-L46)):
-  * `applicant_id`: UUID partition key ($O(1)$ query by applicant).
-  * `timestamp`: UTC ISO string sort key (chronological decision history).
-  * `inputs`: Complete serialized JSON string of submitted parameters.
-  * `probability`: `Decimal(str(prob))` storing exact default risk.
-  * `tier` & `decision`: Operational verdict for auditor review.
+  *Cloud Walkthrough Points*: Zero hardcoded access keys. Services assume IAM roles ephemerally with short-lived STS tokens.
 
 ### 6.4 Slide-by-Slide Speaking Script
-* **Slide 16: Content Delivery & Edge Security via CloudFront OAC**
-  > *"Thank you, Person C. To deliver CreditIQ to users worldwide, we hosted our single-page application in an Amazon S3 bucket fronted by Amazon CloudFront CDN. Rather than exposing our S3 bucket publicly, we locked it down using AWS Origin Access Control with SigV4 request signing. All web traffic is encrypted under TLS 1.3, cached at edge locations, and protected from direct bucket tampering."*
-* **Slide 17: Regulatory Compliance & Immutable Auditing on DynamoDB**
-  > *"Under financial regulations like the Equal Credit Opportunity Act and Fair Credit Reporting Act, banks must prove exactly why an applicant was approved or rejected. In our Lambda function, before returning a verdict, every transaction is committed to an Amazon DynamoDB table. Keyed by `applicant_id` and timestamp, our audit store records the full input vector, the exact model probability, risk tier, and timestamp—persisting 1,000 out of 1,000 test requests with zero loss."*
-* **Slide 18: Security Governance & CloudWatch Observability**
-  > *"Security in CreditIQ adheres to strict IAM least privilege. As seen in `iam_trust_policy.json`, our services assume temporary runtime credentials using `sts:AssumeRole`—no permanent AWS access keys exist anywhere in our code. Amazon CloudWatch ingests unified log streams from Glue, SageMaker, and Lambda, monitoring API Gateway error rates and triggering automated alarms if anomalies occur."*
-* **Slide 19: FinOps: Running Enterprise MLOps for $0.47**
-  > *"A standout achievement of CreditIQ is its economics. As summarized in Table II of our paper, our entire evaluation workload—exploring 307,000 records in Athena, preprocessing in Glue, training, hosting serverless SageMaker endpoints, and executing 1,000 live inferences—cost a total of just $0.47 USD. Because every single service scales to zero when idle, a regional bank can run this infrastructure at essentially zero standby cost."*
-* **Slide 20: Live Demonstration & Concluding Takeaways**
-  > *"*(Switching to screen)* I will now demonstrate our live interface in `credit-risk-demo.html`. As we load the 'Marginal Retail Borrower' preset, the system calculates their debt-to-income and annuity ratios on the fly, passes the payload through API Gateway and Lambda to SageMaker, and returns a 38.4% default probability—correctly classified as Medium Risk for Underwriter Review and logged to DynamoDB in 73 milliseconds. In conclusion, CreditIQ proves that cost-sensitive machine learning and serverless cloud engineering can unite to deliver an auditable, enterprise-ready MLOps platform for under one dollar. Our team is now ready for questions."*
+* **Slide 16: Event-Driven Serverless Compute with AWS Lambda**
+  > *"Thank you, Person C. In our serving path, we deployed a serverless compute layer using AWS Lambda behind an Amazon API Gateway HTTP API. HTTP API is AWS's modern, lightweight gateway variant that cuts routing latency to just 6 milliseconds. When an applicant submits a loan request, API Gateway triggers our Lambda function, which extracts parameters, invokes the SageMaker Serverless endpoint, logs the transaction to DynamoDB, and returns a CORS-compliant response in just 9 ms."*
+* **Slide 17: Regulatory Audit Logging on Amazon DynamoDB**
+  > *"Banking regulations such as FCRA and ECOA require lenders to provide an unalterable audit trail explaining every credit decision. We implemented a single-table NoSQL audit store on Amazon DynamoDB using on-demand capacity. Keyed by `applicant_id` as partition key and a UTC ISO timestamp as sort key, DynamoDB commits the full input vector, default probability, risk tier, and final verdict in an average write time of just 6 milliseconds, persisting 1,000 out of 1,000 test transactions with zero loss."*
+* **Slide 18: Global Edge Delivery & S3 Origin Access Control**
+  > *"To serve our web client globally, we hosted our single-page application in an S3 bucket distributed by Amazon CloudFront CDN. Many cloud projects leave S3 buckets publicly readable, creating severe security vulnerabilities. In `setup_cloudfront.py`, we implemented AWS Origin Access Control with SigV4 signing. Our S3 bucket blocks all public access; only CloudFront edge servers can retrieve the files over encrypted TLS 1.3, providing global edge caching and automated DDoS protection via AWS Shield."*
+* **Slide 19: Security Governance & CloudWatch Observability**
+  > *"Security across CreditIQ follows strict IAM least privilege. As defined in `iam_trust_policy.json`, our services assume temporary runtime credentials using `sts:AssumeRole`—no permanent access keys or secrets exist anywhere in our code. Amazon CloudWatch aggregates unified log streams from Glue, SageMaker, and Lambda, monitoring API Gateway error rates and triggering automated alarms on anomalous Lambda execution failures."*
+* **Slide 20: FinOps Economics & Live Demonstration**
+  > *"*(Switching to screen)* Finally, we examine the economics of CreditIQ. As shown in Table II, our entire evaluation workload—including S3 data lake storage, Athena querying, Glue ETL, SageMaker serverless compute, and 1,000 live API transactions—cost a grand total of just **$0.47 USD**. Because every single component scales to zero when idle, standby costs are exactly $0.00. I will now demonstrate our live interface in `credit-risk-demo.html`: submitting a request routes across CloudFront, API Gateway, Lambda, and SageMaker, returning our operational decision and logging to DynamoDB in 73 ms. CreditIQ demonstrates that serverless cloud computing can deliver enterprise-grade scalability, auditability, and security for under fifty cents. Our team is now ready for your questions."*
 
 ### 6.5 Viva & Committee Defense Q&A
-1. **Q: Why use CloudFront with Origin Access Control (OAC) instead of just enabling S3 Static Website Hosting?**  
-   *Answer*: Standard S3 website hosting requires disabling bucket block public access and making the entire bucket publicly readable over plain HTTP, exposing it to content snooping, scraping, and unauthorized bandwidth costs. CloudFront with OAC keeps the S3 bucket completely private, enforces HTTPS encryption, protects against DDoS attacks through AWS Shield standard, and caches assets globally across edge points of presence.
-2. **Q: Why is DynamoDB preferred over relational Amazon RDS MySQL for audit logging?**  
-   *Answer*: In lending applications, audit writes must never block or slow down user decisions. DynamoDB provides single-digit millisecond write latency (6 ms measured) with virtually infinite horizontal on-demand scaling. Its key-value document schema flexibly accommodates evolving input features without requiring costly database table schema migrations.
-3. **Q: Why is the client-observed latency (284 ms) higher than the server-side latency (73 ms)?**  
-   *Answer*: The server-side latency (73 ms) measures the internal AWS execution across API Gateway, Lambda, SageMaker, and DynamoDB in the `us-east-1` (North Virginia) data center. The remaining ~210 ms is the physical wide-area network (WAN) round-trip time between our client in Mumbai, India and North Virginia via transatlantic undersea fiber optic cables. Deploying in `ap-south-1` (Mumbai) would reduce total client latency to under 90 ms.
+1. **Q: Why use API Gateway HTTP API instead of API Gateway REST API?**  
+   *Answer*: API Gateway HTTP APIs are purpose-built for low-latency, serverless proxy routing. They deliver up to a 60% reduction in latency (6 ms median vs 30+ ms in REST API) and are 71% cheaper ($1.00 per million calls vs $3.50 in REST APIs) while supporting native OpenID Connect/OAuth2 authentication and automatic CORS handling.
+2. **Q: Why use Origin Access Control (OAC) instead of the older Origin Access Identity (OAI)?**  
+   *Answer*: OAI is a legacy mechanism that does not support AWS Signature Version 4 (SigV4), does not support KMS server-side encryption, and does not work in newer AWS regions. OAC supports SigV4 signing, provides granular IAM policy support with AWS service principals, and ensures all traffic between CloudFront and S3 is cryptographically signed and authenticated.
+3. **Q: Why is DynamoDB single-table design superior to Amazon RDS PostgreSQL for this audit logging workload?**  
+   *Answer*: In loan processing, audit persistence is in the critical serving path. RDS MySQL or PostgreSQL requires maintaining connection pools, managing schema migrations, and handling disk storage limits. DynamoDB provides single-digit millisecond write latency (6 ms measured), handles infinite on-demand write scaling, and stores schema-flexible JSON payloads without requiring schema migration scripts.
 
 ---
 
 ## 7. Master Cross-Team Transitions & Handoff Cues
 
-To deliver a flawless, high-scoring presentation, each team member should use the following explicit verbal cues to hand over the microphone:
+To demonstrate seamless team cohesion during the presentation, use these verbal handoff cues:
 
 * **Person A $\rightarrow$ Person B**:  
-  > *"Now that our data lake is established and our 192 features are clean and orchestrated, I will pass the presentation to Person B to explain our cost-sensitive machine learning models and threshold optimization."*
+  > *"Now that our S3 Data Lake is established and our serverless Athena exploration is verified, I pass the floor to Person B to explain our automated ETL pipeline in AWS Glue and workflow orchestration in AWS Step Functions."*
 * **Person B $\rightarrow$ Person C**:  
-  > *"With our Stacking Ensemble achieving a 0.7556 ROC-AUC and our optimal threshold established at 0.49, I will hand over to Person C to demonstrate how we containerized this model and deployed it onto an AWS serverless inference endpoint."*
+  > *"With our data cleaned, transformed, and orchestrated with zero silent failures, I hand over to Person C to demonstrate how we packaged our application into Amazon ECR and deployed a serverless inference endpoint on Amazon SageMaker."*
 * **Person C $\rightarrow$ Person D**:  
-  > *"Now that our containerized SageMaker endpoint and low-latency Lambda scoring backend are live, I pass the floor to Person D to present our global edge delivery, audit compliance, cloud economics, and live platform demo."*
+  > *"Now that our serverless container endpoint is deployed with scale-to-zero compute, I pass the floor to Person D to present our API Gateway routing, DynamoDB auditing, CloudFront edge delivery, FinOps cost analysis, and live system demonstration."*
 
 ---
 
-## 8. Master Summary Table
+## 8. Master Cloud Computing Comparison Table
 
-| Category | Person A | Person B | Person C | Person D |
+| Dimension | Person A: Storage & Analytics | Person B: Serverless ETL & Orchestration | Person C: Containerization & Hosting | Person D: FaaS, Audit, CDN & FinOps |
 | :--- | :--- | :--- | :--- | :--- |
-| **Domain** | Data Engineering & Pipeline | Machine Learning & Optimization | Serving & Containerization | Delivery, Security & FinOps |
-| **Assigned Paper Sections** | Sec I, I-A, I-B, II-A, II-B, II-C, II-F, III-A | Sec I (Math), I-A, II-D, Eq 2, II-E, IV-A, V-A | Sec II-D, III-A, IV-B, IV-C, V-B | Sec II-E, II-F, III-B, III-C, IV-D, V-C, VI, VII |
-| **Assigned Codebase Files** | `athena_queries.sql`, `glue_preprocess.py`, `step_functions.json`, `01_exploration.ipynb`, `02_preprocessing.ipynb` | `03_base_models.ipynb`, `04_stacking.ipynb`, `05_threshold_optimization.ipynb`, `06_evaluation.ipynb`, `optimal_threshold.txt` | `predict_single.py`, `Dockerfile`, `serve.py`, `deploy_sagemaker.py`, `lambda_handler.py`, `predict_api.py` | `setup_cloudfront.py`, `setup_apigw.py`, `credit-risk-demo.html`, `iam_trust_policy.json`, DynamoDB & CloudWatch |
-| **AWS Services Owned** | S3 Data Lake, Athena, Glue, Step Functions | Local Python / Scikit-learn / XGBoost / LightGBM | Amazon ECR, SageMaker Serverless, AWS Lambda | Amazon CloudFront (OAC), API Gateway, DynamoDB, IAM, CloudWatch |
-| **Primary Metric / Value** | 307,511 rows, 9 financial ratios, 192 encoded features | ROC-AUC 0.7556, $\tau^* = 0.49$, 70.4% default recall | 73 ms server latency, 0.0 numerical drift, 3072 MB RAM | $0.47 total cost, 100% request success, 1,000 audit rows |
+| **AWS Services** | Amazon S3, Amazon Athena | AWS Glue, AWS Step Functions | Amazon ECR, SageMaker Serverless | API Gateway, Lambda, DynamoDB, CloudFront, IAM, CloudWatch |
+| **Cloud Computing Model** | Decoupled Object Storage & Schema-on-Read SQL | Serverless ETL & State Machine Orchestrator | Container Registry & Serverless Inference Compute | Event-Driven FaaS, NoSQL Key-Value, Global CDN Edge |
+| **Assigned Codebase Files** | `athena_queries.sql`, S3 Data Lake layout | `glue_preprocess.py`, `step_functions.json` | `Dockerfile`, `serve.py`, `deploy_sagemaker.py`, `predict_single.py` | `setup_apigw.py`, `setup_cloudfront.py`, `lambda_handler.py`, `iam_trust_policy.json`, `credit-risk-demo.html` |
+| **Execution Model** | Ephemeral queries billed per TB scanned | DPU-minute compute with synchronous state transition | Scale-to-zero container instance (3072 MB RAM) | Millisecond micro-billing with global edge caching |
+| **Key Performance Metric** | 158.4 MB scanned in 1.9s ($0.01 cost) | 1 min 52 s ETL duration, 100% state machine success | 41 ms compute time, 9.8s cold start, 0.0 drift | 73 ms server-side latency, 1,000/1,000 audit persistence |
+| **FinOps Evaluation Cost** | $0.02 USD (S3 + Athena) | $0.03 USD (Glue + Step Functions) | $0.42 USD (SageMaker + ECR) | $0.00 USD (Covered under AWS Free Tier) |
 
 ---
 
-## 9. Live Demonstration Playbook (2 Minutes)
+## 9. Live Cloud Architecture Demonstration (2 Minutes)
 
-When Person D executes the live demonstration on [`credit-risk-demo.html`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/credit-risk-demo.html), follow this exact clickpath:
+When Person D presents the live system using [`credit-risk-demo.html`](file:///c:/Users/asus/Documents/Repositories/credit-risk-prediction-project/credit-risk-demo.html), follow this exact technical narrative:
 
-1. **Preset 1 (Prime Homebuyer)**:
-   * Click **"Prime Homebuyer"** preset.
-   * Observe: High income ($240,000), large credit ($600,000), long employment history (8 years), high credit bureau rating (`EXT_SOURCE` = 0.85).
+1. **Edge Request via CloudFront CDN**:
+   * Open the browser and show the address bar loading over secure HTTPS via CloudFront edge distribution.
+   * Highlight that the underlying S3 bucket is completely private via Origin Access Control (SigV4).
+2. **API Gateway & Lambda Invocation**:
+   * Select the **"Marginal Retail Borrower"** scenario preset.
    * Click **"Evaluate Credit Risk"**.
-   * Gauge animates to **~12-15% (Low Risk - Automated Approval)**.
-2. **Preset 2 (High-Risk Speculator)**:
-   * Click **"High-Risk Speculator"** preset.
-   * Observe: High credit-to-income ratio (credit $1,200,000 vs income $90,000), multiple social circle delinquencies, minimal employment.
-   * Click **"Evaluate Credit Risk"**.
-   * Gauge swings into the red to **~72-85% (High Risk - Immediate Rejection)**.
-3. **Preset 3 (Marginal Retail Borrower)**:
-   * Click **"Marginal Retail Borrower"** preset.
-   * Observe: Moderate income, borderline credit score.
-   * Click **"Evaluate Credit Risk"**.
-   * Gauge lands at **~36-42% (Medium Risk - Routed for Underwriter Review)**.
-   * Point out to the committee that this operational human-in-the-loop tiering directly reflects Table I and protects both bank capital and customer goodwill.
+   * Show that the browser fires a `GET /predict` HTTPS call to API Gateway, which invokes AWS Lambda with query parameters.
+3. **SageMaker Container Compute**:
+   * Point out the returned server-side response: SageMaker executed the in-container scoring in 41 ms, returning a default probability of ~38.4% (Medium Risk / Underwriter Review).
+4. **DynamoDB Audit Persistence**:
+   * Explain that before Lambda returned the HTTP 200 response, it committed a permanent audit record into DynamoDB containing the applicant UUID, full parameters, probability, and timestamp in 6 ms.
+5. **Total Measured Server-Side Latency**:
+   * Point to the benchmark: **73 ms** total server-side round trip across 4 managed cloud services, costing a fraction of a cent per invocation.
