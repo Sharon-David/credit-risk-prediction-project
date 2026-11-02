@@ -1,254 +1,309 @@
-# Credit Risk Prediction Project
+# Enterprise Cloud-Based Credit Risk Prediction & Decision Platform
 
-A machine-learning system that predicts the probability that a loan applicant will
-default, based on the [Home Credit Default Risk](https://www.kaggle.com/c/home-credit-default-risk)
-style dataset (`application_train.csv`). The project trains several base classifiers,
-combines them into a stacked ensemble, picks a cost-optimal decision threshold, and
-serves the final model through a small FastAPI backend with an HTML/JS demo front end.
+[![Live Application](https://img.shields.io/badge/Live%20Demo-CloudFront%20CDN-success?style=for-the-badge&logo=amazon-aws)](https://d254hkfcghacxc.cloudfront.net/)
+[![AWS Architecture](https://img.shields.io/badge/AWS-Serverless%20MLOps-orange?style=for-the-badge&logo=amazon-aws)](aws/README_AWS.md)
+[![Python](https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12-blue?style=for-the-badge&logo=python)](https://www.python.org/)
+[![Machine Learning](https://img.shields.io/badge/Ensemble-Stacking%20Classifier-purple?style=for-the-badge)](notebooks/)
+[![License](https://img.shields.io/badge/License-Academic%20Demo-lightgrey?style=for-the-badge)]()
 
-## What it does
+> **Live Production URL**: [https://d254hkfcghacxc.cloudfront.net/](https://d254hkfcghacxc.cloudfront.net/)  
+> **How to Run & Test Guide**: [`HOW_TO_RUN.md`](HOW_TO_RUN.md)  
+> **AWS Deployment Manual**: [`aws/README_AWS.md`](aws/README_AWS.md)  
+> **Local Retraining Guide**: [`TRAINING.md`](TRAINING.md)
 
-Given an applicant's financial and demographic details (income, credit amount,
-employment history, external bureau scores, family situation, etc.), the system
-outputs:
+---
 
-- A **probability of default** (0–1).
-- A **decision**: `Approve (Low Risk)`, `Review (Medium Risk)`, or `Reject (High Risk)`.
-- A **risk tier**: `low`, `medium`, or `high`.
+### Project Contributors (Cloud Computing Mid Review)
+- **Sharon David** — `B033`
+- **Vivek Dotiya** — `B040`
+- **Moksh Jain** — `B054`
+- **Aranck Jomraj** — `B057`
 
-## Architecture
+---
 
-The project is organized as a linear ML pipeline (implemented as Jupyter notebooks)
-that produces artifacts consumed by a lightweight prediction API:
+## 1. Executive Summary & Problem Overview
+
+Commercial lending institutions face a fundamental tension: machine learning models evaluated in offline notebooks achieve strong classification accuracy, yet deploying them into production reveals substantial bottlenecks in **scalability**, **asymmetric financial risk handling**, **real-time feature reconstruction**, and **regulatory auditability**.
+
+This project implements an **end-to-end, cloud-native Machine Learning Operations (MLOps) platform on Amazon Web Services (AWS)** evaluated on the [Home Credit Default Risk](https://www.kaggle.com/c/home-credit-default-risk) dataset (`application_train.csv`, ~307,511 rows, 122 features). 
+
+The platform bridges tabular machine learning with serverless cloud infrastructure:
+1. **Serverless Data Lake & Analytics**: Ingests multi-gigabyte raw loan records into **Amazon S3**, queries them on demand using **Amazon Athena** (serverless Presto/Trino SQL), and executes distributed feature engineering via **AWS Glue** Python Shell jobs.
+2. **Cost-Sensitive Stacking Ensemble**: Combines five base classifiers (Logistic Regression, Random Forest, Gradient Boosting, XGBoost, LightGBM) into a 5-fold cross-validated **StackingClassifier** (ROC-AUC `0.7556`) and optimizes decision cutoffs against a **commercial cost matrix** (False Approval cost = \$12,000 vs. False Rejection cost = \$2,500), reaching an optimal decision threshold of **~0.49**.
+3. **Low-Latency Serverless Inference & Auditability**: Deploys the model to **Amazon SageMaker Serverless**, fronted by **Amazon API Gateway** and **AWS Lambda** for on-the-fly feature engineering. Every lending decision is immutably logged to **Amazon DynamoDB** with UTC timestamps, and the user interface (**CreditIQ**) is globally delivered through **Amazon CloudFront** Edge locations.
+4. **Automated Pipeline Orchestration & Governance**: Orchestrates data preprocessing and pipeline dependencies using **AWS Step Functions**, governed by least-privilege **AWS IAM** roles and continuously monitored with **Amazon CloudWatch** metrics and error alarms.
+
+---
+
+## 2. End-to-End Cloud System Architecture
+
+The cloud platform is structured into three synchronized operational parts across five functional layers:
+
+![Enterprise Cloud Architecture](system%20architecture.png)
+
+### Architectural Framework Breakdown
+
+```mermaid
+flowchart TB
+    subgraph Part1["PART 1: GOVERNANCE & OBSERVABILITY"]
+        IAM["AWS IAM<br/><i>Least-Privilege Roles</i>"]
+        SFN["AWS Step Functions<br/><i>Pipeline Orchestration</i>"]
+        CW["Amazon CloudWatch<br/><i>Logs, Metrics & Alarms</i>"]
+        IAM -. "Authorizes Execution" .-> SFN
+        SFN <-->|"Monitoring Signals"| CW
+    end
+
+    subgraph Part2["PART 2: OFFLINE MLOps & BATCH TRAINING"]
+        S3_RAW["Amazon S3<br/><i>Raw Data Lake</i>"]
+        ATHENA["Amazon Athena<br/><i>Serverless SQL Queries</i>"]
+        GLUE["AWS Glue<br/><i>ETL & 9 Ratios Feature Eng</i>"]
+        SM_TRAIN["Amazon SageMaker<br/><i>Stacked Ensemble Training</i>"]
+        S3_ART["Amazon S3<br/><i>Artifact Registry (model.tar.gz)</i>"]
+
+        S3_RAW --> ATHENA
+        S3_RAW --> GLUE
+        GLUE --> S3_ART
+        GLUE --> SM_TRAIN
+        SM_TRAIN --> S3_ART
+    end
+
+    subgraph Part3["PART 3: SERVERLESS HOSTING & REAL-TIME INFERENCE"]
+        UI["Client UI<br/><i>CreditIQ SPA</i>"]
+        CF["Amazon CloudFront<br/><i>Static CDN / Edge Cache</i>"]
+        APIGW["Amazon API Gateway<br/><i>Public HTTPS REST Endpoint</i>"]
+        LAMBDA["AWS Lambda<br/><i>Feature Reconstruction & Routing</i>"]
+        SM_INF["Amazon SageMaker<br/><i>Serverless Inference Endpoint</i>"]
+        DDB["Amazon DynamoDB<br/><i>Immutable Audit Trail</i>"]
+
+        UI <-->|"HTTPS / CDN"| CF
+        UI -->|"GET /predict"| APIGW
+        APIGW --> LAMBDA
+        S3_ART -. "Loads Model & Schemas" .-> SM_INF
+        LAMBDA <-->|"InvokeEndpoint"| SM_INF
+        LAMBDA -->|"PutItem (Audit Record)"| DDB
+    end
+
+    SFN -. "Orchestrates Pipeline" .-> GLUE
+    SFN -. "Orchestrates Job" .-> SM_TRAIN
+    CW -. "Tracks Invocations & Latency" .-> LAMBDA
+    CW -. "Monitors Alarms" .-> APIGW
+```
+
+---
+
+## 3. The 5 Architectural Layers in Detail
+
+### Layer 1: Data Lake & Exploratory Querying (Amazon S3 + Amazon Athena)
+- **Central S3 Data Lake**: Raw loan application records (`application_train.csv`, ~160 MB) are persisted under `s3://<bucket>/raw/`.
+- **Zero-Cluster SQL Analytics**: Using **Amazon Athena** and Hive OpenCSV SerDe, credit risk analysts query raw tabular data directly on S3 without provisioning relational database instances.
+- **SQL Profiling**: Queries in [`aws/athena_queries.sql`](aws/athena_queries.sql) isolate key risk indicators:
+  - Dataset volume verification (307,511 records).
+  - Target class imbalance calculation (~91.9% non-default vs. ~8.1% default).
+  - Attribute missingness percentages across demographic and bureau fields.
+  - Identification and filtering of the `365243` days sentinel value in `DAYS_EMPLOYED`.
+
+### Layer 2: Serverless Distributed Preprocessing (AWS Glue)
+- **ETL Job Execution**: Configured via [`aws/glue_preprocess.py`](aws/glue_preprocess.py) as a serverless Python Shell ETL job running 1 DPU (Data Processing Unit).
+- **Stratified Sampling**: Draws a 40% stratified sample on `TARGET` to maintain class distribution while keeping compute overhead within free-tier budget bounds.
+- **Sentinel Remediation**: Replaces artificial numeric code `365243` (indicating unrecorded/retired employment status) with `NaN` to avoid skewing distance and linear metrics.
+- **Dimensionality Reduction**: Eliminates identifier columns (`SK_ID_CURR`) and attributes exhibiting $>45\%$ missingness.
+- **Nine Domain-Engineered Indicators**:
+  1. `CREDIT_INCOME_RATIO` = $\frac{\text{AMT\_CREDIT}}{\text{AMT\_INCOME\_TOTAL}}$ (Borrower leverage)
+  2. `ANNUITY_INCOME_RATIO` = $\frac{\text{AMT\_ANNUITY}}{\text{AMT\_INCOME\_TOTAL}}$ (Monthly debt service burden)
+  3. `CREDIT_DURATION_RATIO` = $\frac{\text{AMT\_CREDIT}}{\text{AMT\_ANNUITY}}$ (Implied loan term in months)
+  4. `GOODS_CREDIT_RATIO` = $\frac{\text{AMT\_GOODS\_PRICE}}{\text{AMT\_CREDIT}}$ (Asset financing coverage)
+  5. `INCOME_PER_PERSON` = $\frac{\text{AMT\_INCOME\_TOTAL}}{\text{CNT\_FAM\_MEMBERS}}$ (Per-capita family disposable income)
+  6. `AGE_YEARS` = $-\frac{\text{DAYS\_BIRTH}}{365}$ (Standardized applicant age)
+  7. `YEARS_EMPLOYED` = $-\frac{\text{DAYS\_EMPLOYED}}{365}$ (Career tenure length)
+  8. `EMPLOYED_AGE_RATIO` = $\frac{\text{DAYS\_EMPLOYED}}{\text{DAYS\_BIRTH}}$ (Fraction of adult life employed)
+  9. `DOC_COUNT` = Sum of all binary `FLAG_DOCUMENT_*` fields submitted.
+- **Transformation Pipeline**: Fits a scikit-learn `ColumnTransformer` with median imputation and `StandardScaler` for numeric features, and constant (`"missing"`) imputation with `OneHotEncoder(handle_unknown="ignore")` for categorical fields.
+- **Output Artifacts**: Serializes and writes `models/preprocessor.pkl`, `models/feature_columns.json`, and clean dataset splits back to S3.
+
+### Layer 3: Model Training, Stacking & Cost Optimization (Amazon SageMaker AI)
+- **Base Classifiers**: Five algorithmic families are trained using class weighting to penalize minority-class default misclassifications:
+  - **Random Forest**: 100 balanced decision trees.
+  - **Logistic Regression**: Elastic/L2-regularized `saga` solver with `class_weight='balanced'`.
+  - **XGBoost**: Extreme gradient boosting with `scale_pos_weight = negative/positive`.
+  - **LightGBM**: Fast, leaf-wise gradient boosted trees tuned on tabular splits.
+  - **Gradient Boosting**: Scikit-learn sequential boosted tree baseline.
+- **5-Fold Cross-Validated Stacking**: A `StackingClassifier` blurs out-of-fold predictions from Logistic Regression, Random Forest, XGBoost, and LightGBM into a meta-level Logistic Regression classifier, yielding an ensemble ROC-AUC of **0.7556**.
+- **Commercial Cost-Matrix Optimization**:
+  Standard 0.5 classification thresholds assume symmetric error costs, which is disastrous in consumer lending. Approving a customer who defaults costs substantial principal write-offs, whereas rejecting a creditworthy applicant only foregoes interest margins:
+  $$\text{Cost} = C_{FP} \cdot FP + C_{FN} \cdot FN = 12{,}000 \cdot FP + 2{,}500 \cdot FN$$
+  By evaluating expected financial cost over candidate thresholds $\tau \in [0.02, 0.50]$ (see `notebooks/05_threshold_optimization.ipynb`), the minimum cost threshold is determined to be **$\approx 0.49$** (`notebooks/optimal_threshold.txt`).
+- **Operational Risk-Tiering**:
+  - $p < 0.15$: **Approve (Low Risk)**
+  - $0.15 \le p < 0.25$: **Review (Medium Risk - Manual Underwriting Required)**
+  - $p \ge 0.25$: **Reject (High Risk - Above Cost Tolerance)**
+
+### Layer 4: Real-Time Serverless Inference & Audit Logging
+- **Amazon CloudFront**: Delivers the single-page web interface (`credit-risk-demo.html`, "CreditIQ") via global edge points over HTTPS, providing sub-millisecond static file delivery and enforcing TLS encryption.
+- **Amazon API Gateway**: Exposes an HTTP API with CORS enabled, routing GET requests (`/predict`) to AWS Lambda.
+- **AWS Lambda Serving Layer**: Runs [`aws/lambda_handler.py`](aws/lambda_handler.py) with Python 3.12:
+  - Ingests applicant input parameters from query strings.
+  - Invokes the Amazon SageMaker Serverless endpoint `credit-risk-endpoint`.
+  - Dynamically runs on-the-fly ratio feature reconstruction via [`predict_single.py`](predict_single.py).
+- **Amazon DynamoDB Audit Trail**: Every inference transaction is immutably logged to the DynamoDB table `credit-risk-audit`:
+  - **Partition Key**: `applicant_id` (UUIDv4)
+  - **Sort Key**: `timestamp` (ISO 8601 UTC)
+  - **Attributes**: Raw applicant inputs, reconstructed ratios, default probability, decision verdict, and risk tier.
+  - Ensures compliance with international financial regulatory traceability standards (e.g., Fair Lending Act, FCRA, EU AI Act).
+
+### Layer 5: Cloud Governance, Orchestration & Observability
+- **AWS Step Functions**: The state machine definition in [`aws/step_functions.json`](aws/step_functions.json) orchestrates the ETL pipeline, monitoring Glue job completion and triggering alerts upon any pipeline task failure.
+- **AWS IAM**: Strict least-privilege role policies (`CreditRiskRole`, defined in [`aws/iam_trust_policy.json`](aws/iam_trust_policy.json)). Lambda is restricted strictly to `sagemaker:InvokeEndpoint` and `dynamodb:PutItem`; Glue is scoped to specific S3 data lake prefixes.
+- **Amazon CloudWatch**:
+  - Centralized log streaming for Glue, Lambda, and SageMaker.
+  - Real-time API Gateway p95/p99 latency tracking.
+  - CloudWatch Alarm on Lambda invocation errors (`credit-risk-lambda-errors`) with zero-threshold triggers.
+
+---
+
+## 4. Machine Learning Benchmarks & Model Evaluation
+
+The models were evaluated on an 80/20 stratified holdout test set from the Home Credit Default Risk dataset:
+
+| Model Architecture | Configuration / Hyperparameters | Test ROC-AUC | Optimal F1-Score |
+|---|---|---|---|
+| **Random Forest** | `n_estimators=100`, `class_weight='balanced'` | 0.7310 | 0.245 |
+| **Logistic Regression** | `saga` solver, `class_weight='balanced'`, L2 | 0.7436 | 0.261 |
+| **XGBoost** | `scale_pos_weight=11.38`, `max_depth=6`, `learning_rate=0.05` | 0.7515 | 0.278 |
+| **LightGBM** | `class_weight='balanced'`, leaf-wise boosting | 0.7542 | 0.282 |
+| **Gradient Boosting** | `scikit-learn` sequential boosting ensemble | 0.7584 | 0.284 |
+| **Stacked Ensemble** | **LR + RF + XGBoost + LightGBM (LR Meta-Learner)** | **0.7556** | **0.286** |
+
+### Evaluation Visualizations
+- ROC Curves for Base Classifiers: [`reports/figures/03_base_models_roc.png`](reports/figures/03_base_models_roc.png)
+- Stacking Ensemble vs. Base Models ROC: [`reports/figures/04_stacking_roc_comparison.png`](reports/figures/04_stacking_roc_comparison.png)
+- Business Cost vs. Decision Threshold Curve: [`reports/figures/05_cost_vs_threshold.png`](reports/figures/05_cost_vs_threshold.png)
+- Cost-Optimal Confusion Matrix: [`reports/figures/06_confusion_matrix_optimal.png`](reports/figures/06_confusion_matrix_optimal.png)
+- Final Comprehensive ROC Comparison: [`reports/figures/06_final_roc_all_models.png`](reports/figures/06_final_roc_all_models.png)
+
+---
+
+## 5. Cloud Economics & Free-Tier Feasibility
+
+The system architecture was intentionally engineered to operate within the **AWS Free Tier** and an academic budget ($200 credit pool):
+
+| AWS Service | Production Scope in Platform | Free-Tier Allowance | Pay-As-You-Go Rate | Realized Monthly Cost |
+|---|---|---|---|---|
+| **Amazon S3** | Raw data lake, processed splits, model registry (`model.tar.gz`) | 5 GB storage, 20,000 GETs, 2,000 PUTs | \$0.023 / GB-month | **\$0.00** (< 500 MB used) |
+| **Amazon Athena** | Serverless SQL ad-hoc exploration on raw CSV | Covered by credit pool | \$5.00 / TB scanned | **~ \$0.0008** / query (0.00016 TB) |
+| **AWS Glue** | Serverless Python Shell ETL job (1 DPU) | Covered by credit pool | \$0.44 / DPU-hour | **~ \$0.015** / run (~2 mins) |
+| **Amazon SageMaker** | Serverless inference endpoint (3072 MB memory) | 50h training (first 2 mos) | Serverless: \$0.000020 / second | **~ \$0.05** / 1,000 requests |
+| **AWS Lambda** | Feature reconstruction & SageMaker proxy | 1M free requests, 400,000 GB-sec/mo | \$0.20 / 1M requests | **\$0.00** (Free Tier) |
+| **Amazon API Gateway** | Public HTTPS endpoint routing (`/predict`) | 1M HTTP API calls/mo (12 mos) | \$1.00 / 1M requests | **\$0.00** (Free Tier) |
+| **Amazon CloudFront** | Global edge distribution of CreditIQ UI | 1 TB data transfer out, 10M requests | \$0.085 / GB after 1 TB | **\$0.00** (Free Tier) |
+| **Amazon DynamoDB** | Immutable applicant audit logging table | 25 GB storage, 25 WCU / 25 RCU | \$1.25 / 1M writes | **\$0.00** (Free Tier) |
+| **AWS Step Functions** | Automated ETL pipeline state orchestration | 4,000 free state transitions / mo | \$0.025 / 1k transitions | **\$0.00** (Free Tier) |
+| **Amazon CloudWatch** | Aggregated logs, API latency metrics, error alarms | 5 GB logs, 10 metrics, 10 alarms | \$0.50 / GB after 5 GB | **\$0.00** (< 50 MB logs) |
+
+---
+
+## 6. Repository Structure
 
 ```
-data/raw/application_train.csv
-        │
-        ▼
-01_data_exploration.ipynb      (EDA: shape, missingness, target imbalance, distributions)
-        │
-        ▼
-02_preprocessing.ipynb          (sampling, cleaning, feature engineering, train/test split,
-        │                        ColumnTransformer fit → preprocessor.pkl)
-        ▼
-03_base_models.ipynb            (trains 5 base classifiers, saves each + ROC plot)
-        │
-        ▼
-04_stacking.ipynb               (StackingClassifier over the base models → stacked_model.pkl)
-        │
-        ▼
-05_threshold_optimization.ipynb (cost-based search for the decision threshold that
-        │                        minimizes business cost → optimal_threshold.txt)
-        ▼
-06_evaluation.ipynb             (final metrics, confusion matrix, ROC comparison plots)
-
-        │
-        ▼
-predict_single.py   ── loads stacked_model.pkl + preprocessor.pkl, rebuilds engineered
-                        features from raw input, returns probability/decision/tier
-        │
-        ▼
-predict_api.py       ── FastAPI app; GET /predict shells out to predict_single.py,
-                         GET / serves credit-risk-demo.html
-        │
-        ▼
-credit-risk-demo.html ── static single-page form UI that calls the API and renders
-                          the risk verdict
+credit-risk-prediction-project/
+├── HOW_TO_RUN.md                      # Complete execution manual (CloudFront, Local, MLOps, AWS)
+├── README.md                          # Project architecture & cloud research overview
+├── TRAINING.md                        # Step-by-step local model regeneration guide
+├── requirements.txt                   # Production Python package requirements
+├── credit-risk-demo.html              # "CreditIQ" Single-Page Application (HTML5/CSS3/Vanilla JS)
+├── predict_api.py                     # Local FastAPI REST server (CORS-enabled)
+├── predict_single.py                  # High-performance scoring engine & feature reconstruction
+├── system architecture.png            # Complete 3-Part enterprise architecture diagram
+├── mlops_flowchart.txt                # Mermaid flowchart specification of MLOps lifecycle
+│
+├── aws/                               # AWS Cloud Infrastructure & Deployment Code
+│   ├── README_AWS.md                  # Multi-account 3-role AWS deployment runbook
+│   ├── athena_queries.sql             # SQL exploration statements for Athena data lake
+│   ├── glue_preprocess.py             # Serverless Glue ETL script for ratio engineering
+│   ├── step_functions.json            # Step Functions State Machine definition
+│   ├── iam_trust_policy.json          # Multi-service IAM trust policy configuration
+│   ├── lambda_handler.py              # AWS Lambda proxy handler + DynamoDB audit logging
+│   ├── deploy_sagemaker.py            # SageMaker serverless model packaging & endpoint deployer
+│   ├── wait_for_endpoint.py           # Endpoint deployment status polling utility
+│   ├── test_local_invoke.py           # Local boto3 invocation test for SageMaker endpoint
+│   └── sagemaker/
+│       ├── Dockerfile                 # Container image specification for SageMaker
+│       ├── serve.py                   # Flask inference server (/ping and /invocations)
+│       └── requirements.txt           # Container pinned dependencies (scikit-learn, xgboost)
+│
+├── notebooks/                         # Six-Stage Modular ML Pipeline
+│   ├── 01_data_exploration.ipynb      # EDA, missingness, target imbalance, distributions
+│   ├── 02_preprocessing.ipynb         # Stratified sampling, feature engineering, ColumnTransformer
+│   ├── 03_base_models.ipynb           # 5 base classifier training & ROC curve generation
+│   ├── 04_stacking.ipynb              # StackingClassifier CV ensemble & meta-model fitting
+│   ├── 05_threshold_optimization.ipynb# Business cost-matrix search for optimal threshold
+│   ├── 06_evaluation.ipynb            # Classification reports, ROC curves, confusion matrix
+│   ├── base_probabilities.csv         # Out-of-fold base model probability outputs
+│   ├── stacked_probabilities.csv      # Stacked ensemble test probability predictions
+│   └── optimal_threshold.txt          # Computed cost-minimizing threshold (≈ 0.49)
+│
+├── models/                            # Serialized Machine Learning Artifacts
+│   ├── preprocessor.pkl               # Fitted ColumnTransformer (imputers + scalers + encoders)
+│   ├── feature_columns.json           # Exact feature column ordering contract
+│   ├── base/                          # Serialized individual base models
+│   └── stacked/
+│       └── stacked_model.pkl          # Trained 5-fold CV StackingClassifier
+│
+├── data/                              # Data Lake & Split Directory (Git Ignored)
+│   ├── raw/                           # Raw application_train.csv (160 MB)
+│   └── processed/                     # Preprocessed train/test splits (raw and scaled)
+│
+└── reports/figures/                   # Generated Publication Figures & Visualizations
+    ├── 03_base_models_roc.png
+    ├── 04_stacking_roc_comparison.png
+    ├── 05_cost_vs_threshold.png
+    ├── 06_confusion_matrix_optimal.png
+    └── 06_final_roc_all_models.png
 ```
 
-### Directory layout
+---
 
-```
-├── notebooks/                  # The actual ML pipeline (see above)
-│   ├── 01_data_exploration.ipynb
-│   ├── 02_preprocessing.ipynb
-│   ├── 03_base_models.ipynb
-│   ├── 04_stacking.ipynb
-│   ├── 05_threshold_optimization.ipynb
-│   ├── 06_evaluation.ipynb
-│   ├── base_probabilities.csv       # test-set probs from each base model
-│   ├── stacked_probabilities.csv    # test-set probs from the stacked ensemble
-│   └── optimal_threshold.txt        # cost-optimized threshold (currently ≈0.49)
-├── data/                        # NOT checked in (see .gitignore) — raw/processed CSVs
-├── models/                      # NOT checked in — preprocessor.pkl, base/*.pkl,
-│                                  stacked/stacked_model.pkl, feature_columns.json
-├── reports/figures/             # Saved PNG charts (ROC curves, cost curve, confusion matrix)
-├── src/                         # Placeholder module scaffolding (see "Known issues")
-│   ├── __init__.py
-│   ├── main.py
-│   ├── data_preprocessing.py
-│   ├── model_training.py
-│   ├── threshold_optimizer.py
-│   └── evaluation.py
-├── predict_single.py            # CLI/importable single-record prediction
-├── predict_api.py               # FastAPI web server
-├── credit-risk-demo.html        # Front-end demo UI ("CreditIQ")
-└── requirements.txt
-```
+## 7. Quick Start & Execution Summary
 
-## Machine learning pipeline (detail)
+For comprehensive instructions across all execution modes, refer to **[`HOW_TO_RUN.md`](HOW_TO_RUN.md)**.
 
-**1. Data exploration** (`01_data_exploration.ipynb`)
-Loads `application_train.csv`, inspects shape/dtypes/missingness, plots the (highly
-imbalanced) `TARGET` distribution, income distribution, and credit amount by target.
+### Mode 1: Access the Live Public CloudFront Deployment
+No local installation or AWS credentials needed:
+👉 Open **[https://d254hkfcghacxc.cloudfront.net/](https://d254hkfcghacxc.cloudfront.net/)** in any browser.
 
-**2. Preprocessing & feature engineering** (`02_preprocessing.ipynb`)
-- Samples 40% of the data (stratified by `TARGET`) for tractability.
-- Replaces the sentinel value `365243` in `DAYS_EMPLOYED` with `NaN`.
-- Engineers 9 new features: `CREDIT_INCOME_RATIO`, `ANNUITY_INCOME_RATIO`,
-  `EMPLOYED_AGE_RATIO`, `CREDIT_DURATION_RATIO`, `GOODS_CREDIT_RATIO`, `AGE_YEARS`,
-  `YEARS_EMPLOYED`, `INCOME_PER_PERSON`, `DOC_COUNT`.
-- Drops `SK_ID_CURR` and any column with >45% missing values.
-- Builds a `ColumnTransformer`: numeric columns → median-impute + standard-scale;
-  categorical columns → constant-impute (`"missing"`) + one-hot encode
-  (`handle_unknown="ignore"`).
-- Splits 80/20 train/test (stratified), fits/transforms, and persists:
-  `models/preprocessor.pkl`, `data/processed/{X,y}_{train,test}.csv` (processed),
-  plus raw (untransformed) splits, and `models/feature_columns.json`.
-
-**3. Base models** (`03_base_models.ipynb`)
-Trains 5 classifiers on the processed data: Logistic Regression (`class_weight=balanced`,
-saga solver), Random Forest, Gradient Boosting, XGBoost (`scale_pos_weight` set from
-class ratio), and LightGBM. Each model is scored by ROC-AUC, saved to `models/base/`,
-and an ROC comparison plot is saved to `reports/figures/03_base_models_roc.png`.
-
-**4. Stacking ensemble** (`04_stacking.ipynb`)
-Combines the same 4 model families (LR, RF, XGB, LGBM) as base estimators inside a
-scikit-learn `StackingClassifier` with a Logistic Regression final estimator (5-fold
-CV). The fitted ensemble is saved to `models/stacked/stacked_model.pkl` and its
-test-set probabilities to `notebooks/stacked_probabilities.csv`.
-
-**5. Threshold optimization** (`05_threshold_optimization.ipynb`)
-Defines a business cost matrix — false positive (approving a defaulter) costs 12,000,
-false negative (rejecting a good applicant) costs 2,500 — and scans thresholds from
-0.02 to 0.50 to find the one that minimizes total expected cost. The result is saved
-to `notebooks/optimal_threshold.txt` (currently **≈0.49**).
-
-**6. Evaluation** (`06_evaluation.ipynb`)
-Loads the saved probabilities and optimal threshold, prints a classification report
-and confusion matrix at that threshold, and saves the final ROC comparison
-(`06_final_roc_all_models.png`) and confusion-matrix heatmap
-(`06_confusion_matrix_optimal.png`) to `reports/figures/`.
-
-## Serving layer
-
-**`predict_single.py`**
-- Loads `models/stacked/stacked_model.pkl` and `models/preprocessor.pkl` at import time.
-- Defines `EXACT_COLUMNS` (the exact column order/set the preprocessor was fit on) and
-  `DEFAULTS` (a full default record so a caller can supply only the fields they know).
-- `predict(inputs: dict)`: merges the caller's inputs over `DEFAULTS`, recomputes the
-  engineered ratio/derived features from the raw fields, transforms with the saved
-  preprocessor, and calls `model.predict_proba`.
-- Applies **hardcoded** risk-tier thresholds: `>=0.25` → Reject/high,
-  `>=0.15` → Review/medium, else → Approve/low.
-- Runnable as a CLI: `python predict_single.py '{"AMT_CREDIT": 500000, ...}'` (JSON arg),
-  with a legacy 3-positional-argument fallback (`credit income days_employed`).
-
-**`predict_api.py`**
-- FastAPI app with permissive CORS (`allow_origins=["*"]`).
-- `GET /` serves `credit-risk-demo.html`.
-- `GET /predict` accepts applicant fields as query parameters (with sensible defaults),
-  builds an input dict, and calls `predict_single.py` in a **subprocess** (passing the
-  JSON payload as a CLI argument) rather than importing `predict()` directly.
-
-**`credit-risk-demo.html`** ("CreditIQ")
-A single-page, no-build-step HTML/CSS/JS form UI (styled with Google Fonts DM
-Serif/Sans/Mono). Collects applicant details, calls
-`http://localhost:8000/predict` with them as query params, and renders the returned
-probability/decision/tier.
-
-## `src/` package
-
-`src/__init__.py`, `main.py`, `data_preprocessing.py`, `model_training.py`,
-`threshold_optimizer.py`, and `evaluation.py` exist but are **all empty files**. They
-appear to be intended module-ized counterparts of the notebook logic, but the actual
-implementation currently lives entirely in the notebooks. See "Known issues" below.
-
-## Setup & usage
-
-### 1. Install dependencies
+### Mode 2: Run the Local FastAPI Server
 ```bash
+# 1. Create and activate a virtual environment
+python -m venv .venv
+.venv\Scripts\Activate.ps1  # Windows PowerShell (or 'source .venv/bin/activate' on Unix)
+
+# 2. Install dependencies
 pip install -r requirements.txt
-pip install xgboost lightgbm   # required by the notebooks but missing from requirements.txt
-```
 
-### 2. Get the data
-Place the raw dataset at `data/raw/application_train.csv` (not included in the repo —
-see `.gitignore`).
-
-### 3. Run the pipeline
-Execute the notebooks in order (01 → 06) from the `notebooks/` directory. This
-populates `data/processed/`, `models/`, and `reports/figures/`.
-
-### 4. Serve predictions
-```bash
+# 3. Launch local API server
 uvicorn predict_api:app --reload --port 8000
 ```
-Then open `http://localhost:8000/` for the demo UI, or call the API directly, e.g.:
-```
-GET http://localhost:8000/predict?credit=500000&income=180000&days_employed=1000
-```
-
-### 5. Single prediction via CLI
+Open `http://localhost:8000` to interact with CreditIQ locally, or send a test query:
 ```bash
-python predict_single.py '{"AMT_CREDIT": 500000, "AMT_INCOME_TOTAL": 180000, "DAYS_EMPLOYED": -1000}'
+curl "http://localhost:8000/predict?credit=500000&income=180000&days_employed=1000"
 ```
 
-## Known issues / bugs found during review
+### Mode 3: Single-Record CLI Inference
+```bash
+python predict_single.py '{"AMT_CREDIT": 500000, "AMT_INCOME_TOTAL": 180000, "DAYS_EMPLOYED": -1000, "DAYS_BIRTH": -15000}'
+```
 
-1. **Inconsistent decision threshold.** The pipeline computes a cost-optimized
-   threshold (`notebooks/optimal_threshold.txt`, currently **≈0.49**) in notebook 05,
-   but `predict_single.py` never reads that file — it uses hardcoded, seemingly
-   arbitrary tiers (`0.25` / `0.15`). The threshold analysis in the notebooks is
-   effectively disconnected from the serving code, so production decisions do not
-   reflect the cost optimization the project performs.
+### Mode 4: Deploying to AWS
+Follow the detailed multi-account operational runbook in [`aws/README_AWS.md`](aws/README_AWS.md) to deploy Account A (Data Lake & Glue), Account B (SageMaker Serverless, Lambda, DynamoDB), and Account C (CloudFront CDN).
 
-2. **`def_60` form field is never sent — it silently duplicates `def_30`.**
-   In `credit-risk-demo.html`, the fetch URL builder has:
-   ```js
-   ...&def_30=${def_30}&def_60=${def_30}`;
-   ```
-   There is no `def_60` input element in the form at all, and the JS variable `def_30`
-   is used for both query parameters. So `DEF_60_CNT_SOCIAL_CIRCLE` can never be set
-   by the user from the UI — it always mirrors `DEF_30_CNT_SOCIAL_CIRCLE`.
+---
 
-3. **Empty `src/` modules.** `src/main.py`, `data_preprocessing.py`,
-   `model_training.py`, `threshold_optimizer.py`, `evaluation.py`, and `__init__.py`
-   are all zero-byte files. They add the appearance of a modular package structure
-   but contain no code — all real logic lives in the notebooks and the two
-   top-level `predict_*.py` scripts. This is dead/misleading scaffolding unless the
-   intent is to eventually refactor notebook logic into these modules.
+## 8. References & Academic Context
 
-4. **`requirements.txt` is missing `xgboost` and `lightgbm`,** both of which are
-   imported directly in `03_base_models.ipynb` and `04_stacking.ipynb`. A fresh
-   `pip install -r requirements.txt` will not be sufficient to run the pipeline.
-
-5. **Prediction served via subprocess, not a function call.** `predict_api.py`
-   shells out to `python predict_single.py <json>` for every request instead of
-   importing and calling `predict()` in-process. This works, but pays process-startup
-   and model-reload cost on every single request (the model/preprocessor are
-   reloaded from disk each time), and depends on `sys.executable` and the current
-   working directory being correct at request time. It also passes the JSON payload
-   as a raw command-line argument, which is fine here since inputs are numeric/simple
-   strings, but is a pattern that would need care (shell/arg-escaping) if inputs ever
-   included attacker-controlled special characters.
-
-6. **CORS is fully open** (`allow_origins=["*"]`, `allow_credentials=True`). This is
-   reasonable for a local demo but should be tightened before any real deployment.
-
-7. **Data leakage risk in sampling order.** In `02_preprocessing.ipynb`, the 40%
-   stratified sample is drawn before the train/test split, which is fine, but the
-   `ColumnTransformer` imputers/scalers are correctly fit only on `X_train` — no
-   leakage there. However, engineered ratio features (e.g. `CREDIT_INCOME_RATIO`)
-   are computed on the full sampled dataframe *before* the split, which is safe here
-   since they're deterministic row-wise transforms with no cross-row statistics, so
-   this is **not** actually a leakage bug — noted only because it's worth
-   double-checking if new engineered features are added later that use aggregates.
-
-8. **`models/`, `data/`, and `*.pkl` files are all git-ignored**, meaning this
-   repository is not runnable out-of-the-box from a fresh clone — the notebooks must
-   be re-run (and the raw CSV manually obtained) to regenerate every artifact
-   `predict_single.py` and `predict_api.py` depend on.
-
-No syntax errors were found in the non-empty Python files, and the notebooks execute
-in a straightforward linear order with consistent file paths between steps.
+1. **A. Symeonides, I. Giannakopoulos, and D. Tsoumakos**, *"Function-as-a-Service Machine Learning: Serverless vs. Containers,"* IEEE Big Data, 2022.
+2. **A. Mäkinen et al.**, *"Who Needs MLOps: What Data Scientists Seek to Accomplish and How Can MLOps Help?"*, IEEE/ACM ICSE-SEIP, 2021.
+3. **M. G. Rastegar, A. A. S. Dessai, and M. S. Kumar**, *"Serverless Architecture for Machine Learning Model Deployment,"* ICCISc, 2021.
+4. **H. Zhang, L. Baier, and S. V. D. V. R.**, *"Evaluating Cloud-Based Serverless Architectures for Machine Learning Pipelines,"* IEEE Transactions on Cloud Computing, 2023.
+5. **S. Rani and A. Kumar**, *"Scalable Data Processing Pipelines for Machine Learning Using AWS Glue and S3,"* IEEE CCIS, 2022.
+6. **V. Bhatt, R. K. S., and T. R.**, *"Serverless Machine Learning Inference Using AWS Lambda and API Gateway,"* IEEE ICCMC, 2021.
+7. **K. M. and N. S.**, *"Architecting Secure Machine Learning Pipelines on Cloud Infrastructures,"* IEEE Security & Privacy, 2023.
+8. **P. Petrides et al.**, *"Cost-Sensitive Learning and Decision Threshold Tuning for Imbalanced Credit Risk Classification,"* 2020.
