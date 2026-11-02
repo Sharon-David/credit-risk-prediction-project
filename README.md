@@ -106,16 +106,16 @@ flowchart TB
 - **ETL Job Execution**: Configured via [`aws/glue_preprocess.py`](aws/glue_preprocess.py) as a serverless Python Shell ETL job running 1 DPU (Data Processing Unit).
 - **Stratified Sampling**: Draws a 40% stratified sample on `TARGET` to maintain class distribution while keeping compute overhead within free-tier budget bounds.
 - **Sentinel Remediation**: Replaces artificial numeric code `365243` (indicating unrecorded/retired employment status) with `NaN` to avoid skewing distance and linear metrics.
-- **Dimensionality Reduction**: Eliminates identifier columns (`SK_ID_CURR`) and attributes exhibiting $>45\%$ missingness.
+- **Dimensionality Reduction**: Eliminates identifier columns (`SK_ID_CURR`) and attributes exhibiting > 45% missingness.
 - **Nine Domain-Engineered Indicators**:
-  1. `CREDIT_INCOME_RATIO` = $\frac{\text{AMT\_CREDIT}}{\text{AMT\_INCOME\_TOTAL}}$ (Borrower leverage)
-  2. `ANNUITY_INCOME_RATIO` = $\frac{\text{AMT\_ANNUITY}}{\text{AMT\_INCOME\_TOTAL}}$ (Monthly debt service burden)
-  3. `CREDIT_DURATION_RATIO` = $\frac{\text{AMT\_CREDIT}}{\text{AMT\_ANNUITY}}$ (Implied loan term in months)
-  4. `GOODS_CREDIT_RATIO` = $\frac{\text{AMT\_GOODS\_PRICE}}{\text{AMT\_CREDIT}}$ (Asset financing coverage)
-  5. `INCOME_PER_PERSON` = $\frac{\text{AMT\_INCOME\_TOTAL}}{\text{CNT\_FAM\_MEMBERS}}$ (Per-capita family disposable income)
-  6. `AGE_YEARS` = $-\frac{\text{DAYS\_BIRTH}}{365}$ (Standardized applicant age)
-  7. `YEARS_EMPLOYED` = $-\frac{\text{DAYS\_EMPLOYED}}{365}$ (Career tenure length)
-  8. `EMPLOYED_AGE_RATIO` = $\frac{\text{DAYS\_EMPLOYED}}{\text{DAYS\_BIRTH}}$ (Fraction of adult life employed)
+  1. `CREDIT_INCOME_RATIO` = `AMT_CREDIT / AMT_INCOME_TOTAL` (Borrower leverage)
+  2. `ANNUITY_INCOME_RATIO` = `AMT_ANNUITY / AMT_INCOME_TOTAL` (Monthly debt service burden)
+  3. `CREDIT_DURATION_RATIO` = `AMT_CREDIT / AMT_ANNUITY` (Implied loan term in months)
+  4. `GOODS_CREDIT_RATIO` = `AMT_GOODS_PRICE / AMT_CREDIT` (Asset financing coverage)
+  5. `INCOME_PER_PERSON` = `AMT_INCOME_TOTAL / CNT_FAM_MEMBERS` (Per-capita family disposable income)
+  6. `AGE_YEARS` = `-DAYS_BIRTH / 365` (Standardized applicant age in years)
+  7. `YEARS_EMPLOYED` = `-DAYS_EMPLOYED / 365` (Career tenure length in years)
+  8. `EMPLOYED_AGE_RATIO` = `DAYS_EMPLOYED / DAYS_BIRTH` (Fraction of adult life employed)
   9. `DOC_COUNT` = Sum of all binary `FLAG_DOCUMENT_*` fields submitted.
 - **Transformation Pipeline**: Fits a scikit-learn `ColumnTransformer` with median imputation and `StandardScaler` for numeric features, and constant (`"missing"`) imputation with `OneHotEncoder(handle_unknown="ignore")` for categorical fields.
 - **Output Artifacts**: Serializes and writes `models/preprocessor.pkl`, `models/feature_columns.json`, and clean dataset splits back to S3.
@@ -130,12 +130,14 @@ flowchart TB
 - **5-Fold Cross-Validated Stacking**: A `StackingClassifier` blurs out-of-fold predictions from Logistic Regression, Random Forest, XGBoost, and LightGBM into a meta-level Logistic Regression classifier, yielding an ensemble ROC-AUC of **0.7556**.
 - **Commercial Cost-Matrix Optimization**:
   Standard 0.5 classification thresholds assume symmetric error costs, which is disastrous in consumer lending. Approving a customer who defaults costs substantial principal write-offs, whereas rejecting a creditworthy applicant only foregoes interest margins:
-  $$\text{Cost} = C_{FP} \cdot FP + C_{FN} \cdot FN = 12{,}000 \cdot FP + 2{,}500 \cdot FN$$
-  By evaluating expected financial cost over candidate thresholds $\tau \in [0.02, 0.50]$ (see `notebooks/05_threshold_optimization.ipynb`), the minimum cost threshold is determined to be **$\approx 0.49$** (`notebooks/optimal_threshold.txt`).
+  ```
+  Cost = (C_FP * FP) + (C_FN * FN) = (12,000 * FP) + (2,500 * FN)
+  ```
+  By evaluating expected financial cost over candidate thresholds from 0.02 to 0.50 (see `notebooks/05_threshold_optimization.ipynb`), the minimum cost threshold is determined to be **≈ 0.49** (`notebooks/optimal_threshold.txt`).
 - **Operational Risk-Tiering**:
-  - $p < 0.15$: **Approve (Low Risk)**
-  - $0.15 \le p < 0.25$: **Review (Medium Risk - Manual Underwriting Required)**
-  - $p \ge 0.25$: **Reject (High Risk - Above Cost Tolerance)**
+  - `p < 0.15`: **Approve (Low Risk)**
+  - `0.15 <= p < 0.25`: **Review (Medium Risk - Manual Underwriting Required)**
+  - `p >= 0.25`: **Reject (High Risk - Above Cost Tolerance)**
 
 ### Layer 4: Real-Time Serverless Inference & Audit Logging
 - **Amazon CloudFront**: Delivers the single-page web interface (`credit-risk-demo.html`, "CreditIQ") via global edge points over HTTPS, providing sub-millisecond static file delivery and enforcing TLS encryption.

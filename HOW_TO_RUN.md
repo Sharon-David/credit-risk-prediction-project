@@ -30,7 +30,7 @@ The complete enterprise architecture is deployed and live on AWS:
 - **External Bureau Score 3 (EXT_SOURCE_3)**: `0.70`
 - **Goods Price**: `280,000`
 - **Delinquency Count (30 / 60 Days)**: `0`
-- **Expected Outcome**: Default Probability $< 0.15 \rightarrow$ **`Approve (Low Risk)`** (Green verdict)
+- **Expected Outcome**: Default Probability < 0.15 → **`Approve (Low Risk)`** (Green verdict)
 
 #### Persona B: High Risk (Subprime Applicant)
 - **Credit Amount**: `1,200,000`
@@ -41,7 +41,7 @@ The complete enterprise architecture is deployed and live on AWS:
 - **External Bureau Score 3 (EXT_SOURCE_3)**: `0.12`
 - **Goods Price**: `1,100,000`
 - **Delinquency Count (30 / 60 Days)**: `2`
-- **Expected Outcome**: Default Probability $\ge 0.25 \rightarrow$ **`Reject (High Risk)`** (Red verdict)
+- **Expected Outcome**: Default Probability ≥ 0.25 → **`Reject (High Risk)`** (Red verdict)
 
 3. Click **"Evaluate Credit Risk"**. The real-time prediction card will render:
    - **Default Probability** (e.g., `8.4%`)
@@ -166,7 +166,7 @@ To reproduce the machine learning experiments, feature engineering, and model tr
    - **`notebooks/02_preprocessing.ipynb`**: Performs stratified 40% sampling, replaces the `365243` employment sentinel, constructs the 9 financial and stability ratios, fits the scikit-learn `ColumnTransformer`, and saves `models/preprocessor.pkl`.
    - **`notebooks/03_base_models.ipynb`**: Trains the 5 base classifiers (Random Forest, Logistic Regression, XGBoost, LightGBM, Gradient Boosting) with imbalance handling and saves ROC curves.
    - **`notebooks/04_stacking.ipynb`**: Constructs the 5-fold cross-validated `StackingClassifier` with a Logistic Regression meta-estimator and saves `models/stacked/stacked_model.pkl`.
-   - **`notebooks/05_threshold_optimization.ipynb`**: Evaluates the asymmetric business cost matrix (\$12,000 FP vs. \$2,500 FN) across cutoffs $0.02 \le \tau \le 0.50$ and saves the optimal threshold ($\approx 0.49$) to `notebooks/optimal_threshold.txt`.
+   - **`notebooks/05_threshold_optimization.ipynb`**: Evaluates the asymmetric business cost matrix ($12,000 FP vs. $2,500 FN) across candidate thresholds from 0.02 to 0.50 and saves the optimal threshold (≈ 0.49) to `notebooks/optimal_threshold.txt`.
    - **`notebooks/06_evaluation.ipynb`**: Generates publication-ready confusion matrices, ROC plots, and classification reports in `reports/figures/`.
 
 ---
@@ -195,6 +195,6 @@ For a complete walkthrough on configuring and deploying the cloud resources acro
 - **Remedy**: Run `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` in PowerShell, confirm with `Y`, and re-run `.venv\Scripts\Activate.ps1`.
 
 ### Q3: How do I verify that DynamoDB is logging predictions?
-- Open the AWS Console $\rightarrow$ **DynamoDB** $\rightarrow$ **Tables** $\rightarrow$ `credit-risk-audit` $\rightarrow$ **Explore table items**.
+- Open the AWS Console → **DynamoDB** → **Tables** → `credit-risk-audit` → **Explore table items**.
 - Every time you submit the form on the CloudFront UI or send a request to the API, a new row containing the `applicant_id`, UTC `timestamp`, derived inputs, risk probability, and verdict will appear.
 
